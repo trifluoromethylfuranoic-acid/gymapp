@@ -1,0 +1,6 @@
+firstname,lastname,username,password,isActive,address,dateOfBirth
+Alice,Apple,alice.apple,{noop}pass1,true,Apple St,1988-05-06
+Bob,Barron,bob.barron,{noop}pass2,true,Bottom St,1968-05-12
+Charlie,Cart,charlie.cart,{noop}pass3,true,Corner St,1900-05-06
+Donna,Donbas,donna.donbas,{noop}pass4,true,Dollar St,1612-05-06
+Erin,Extra,erin.extra,{noop}pass5,false,End St,2012-05-06

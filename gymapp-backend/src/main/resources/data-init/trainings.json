@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "traineeId": 1,
+    "trainerId": 1,
+    "name": "Intro Strength Assessment",
+    "typeId": 1,
+    "datetime": "2026-07-01T10:00:00+03:00[Europe/Kiev]",
+    "duration": "PT1H"
+  },
+  {
+    "id": 2,
+    "traineeId": 1,
+    "trainerId": 2,
+    "name": "Endurance Intervals",
+    "typeId": 2,
+    "datetime": "2026-07-03T18:30:00+03:00[Europe/Kiev]",
+    "duration": "PT45M"
+  },
+  {
+    "id": 3,
+    "traineeId": 2,
+    "trainerId": 3,
+    "name": "Morning Yoga Basics",
+    "typeId": 3,
+    "datetime": "2026-07-05T08:00:00+03:00[Europe/Kiev]",
+    "duration": "PT1H15M"
+  },
+  {
+    "id": 4,
+    "traineeId": 3,
+    "trainerId": 1,
+    "name": "Functional Strength",
+    "typeId": 1,
+    "datetime": "2026-07-08T12:00:00+03:00[Europe/Kiev]",
+    "duration": "PT50M"
+  }
+]

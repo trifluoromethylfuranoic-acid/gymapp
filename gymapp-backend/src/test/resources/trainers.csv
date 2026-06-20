@@ -1,0 +1,6 @@
+firstname,lastname,username,password,isActive,specialization
+Alice,Apple,alice.apple,{noop}pass1,true,zumba
+Bob,Barron,bob.barron,{noop}pass2,true,zumba
+Charlie,Cart,charlie.cart,{noop}pass3,true,yoga
+Donna,Donbas,donna.donbas,{noop}pass4,true,fitness
+Erin,Extra,erin.extra,{noop}pass5,false,running

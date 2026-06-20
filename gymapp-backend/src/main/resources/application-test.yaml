@@ -1,0 +1,18 @@
+application:
+  security:
+    jwt:
+      accessTokenLifetimeSeconds: 99999999
+  data:
+    init:
+      file:
+        trainees: data-init/trainees.json
+        trainers: data-init/trainers.json
+        trainingTypes: data-init/training-types.json
+        trainerAssignments: data-init/trainer-assignments.json
+        trainings: data-init/trainings.json
+logging:
+  threshold:
+    console: trace
+  level:
+    root: info
+    com.epam.lenda: trace

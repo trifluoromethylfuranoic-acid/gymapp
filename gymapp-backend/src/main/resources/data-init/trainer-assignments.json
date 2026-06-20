@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "traineeId": 1,
+    "trainerId": 1
+  },
+  {
+    "id": 2,
+    "traineeId": 1,
+    "trainerId": 2
+  },
+  {
+    "id": 3,
+    "traineeId": 2,
+    "trainerId": 3
+  },
+  {
+    "id": 4,
+    "traineeId": 3,
+    "trainerId": 1
+  }
+]

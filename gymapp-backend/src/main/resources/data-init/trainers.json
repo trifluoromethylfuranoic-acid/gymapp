@@ -1,0 +1,38 @@
+[
+  {
+    "id": 1,
+    "user": {
+      "id": 101,
+      "firstName": "Sarah",
+      "lastName": "Connor",
+      "username": "sarah.connor",
+      "password": "{noop}password123",
+      "isActive": true
+    },
+    "specializationId": 1
+  },
+  {
+    "id": 2,
+    "user": {
+      "id": 102,
+      "firstName": "David",
+      "lastName": "Miller",
+      "username": "david.miller",
+      "password": "{noop}password123",
+      "isActive": true
+    },
+    "specializationId": 2
+  },
+  {
+    "id": 3,
+    "user": {
+      "id": 103,
+      "firstName": "Anna",
+      "lastName": "Lee",
+      "username": "anna.lee",
+      "password": "{noop}password123",
+      "isActive": false
+    },
+    "specializationId": 3
+  }
+]
