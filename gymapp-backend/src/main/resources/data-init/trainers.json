@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "firstName": "Sarah",
+    "lastName": "Connor",
+    "username": "sarah.connor",
+    "password": "{noop}password123",
+    "isActive": true,
+    "specialization": "STRENGTH"
+  },
+  {
+    "id": 2,
+    "firstName": "David",
+    "lastName": "Miller",
+    "username": "david.miller",
+    "password": "{noop}password123",
+    "isActive": true,
+    "specialization": "CARDIO"
+  },
+  {
+    "id": 3,
+    "firstName": "Anna",
+    "lastName": "Lee",
+    "username": "anna.lee",
+    "password": "{noop}password123",
+    "isActive": false,
+    "specialization": "YOGA"
+  }
+]

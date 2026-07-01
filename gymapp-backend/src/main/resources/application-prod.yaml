@@ -1,0 +1,6 @@
+logging:
+  threshold:
+    console: info
+  level:
+    root: info
+    com.epam.lenda: info
