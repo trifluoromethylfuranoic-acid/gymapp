@@ -1,3 +1,6 @@
 spring:
   application:
     name: gymapp
+application:
+  security:
+    defaultPasswordLength: 10

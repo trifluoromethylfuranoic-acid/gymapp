@@ -1,0 +1,14 @@
+application:
+  data:
+    init:
+      file:
+        trainees: data-init/trainees.json
+        trainers: data-init/trainers.json
+        trainings: data-init/trainings.json
+logging:
+  threshold:
+    console: trace
+  level:
+    root: info
+    org.springframework: trace
+    com.epam.lenda: trace
