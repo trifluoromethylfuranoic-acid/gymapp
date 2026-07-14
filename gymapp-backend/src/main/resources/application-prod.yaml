@@ -4,3 +4,19 @@ logging:
   level:
     root: info
     com.epam.lenda: info
+
+spring:
+  profiles:
+    active: local
+
+  datasource:
+    url: jdbc:postgresql://${application.db.host}:${application.db.port}/${application.db.name}
+    driver-class-name: org.postgresql.Driver
+    username: ${application.db.username}
+    password: ${application.db.password}
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false

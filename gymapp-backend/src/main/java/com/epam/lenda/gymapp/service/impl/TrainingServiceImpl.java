@@ -1,49 +1,53 @@
 package com.epam.lenda.gymapp.service.impl;
 
-import com.epam.lenda.gymapp.model.Trainee;
-import com.epam.lenda.gymapp.model.Trainer;
+import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Training;
-import com.epam.lenda.gymapp.model.TrainingType;
+import com.epam.lenda.gymapp.repository.TraineeRepository;
+import com.epam.lenda.gymapp.repository.TrainerRepository;
 import com.epam.lenda.gymapp.repository.TrainingRepository;
+import com.epam.lenda.gymapp.repository.TrainingTypeRepository;
 import com.epam.lenda.gymapp.service.TrainingService;
 import jakarta.annotation.Nonnull;
-import java.time.Duration;
-import java.time.ZonedDateTime;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
+import java.util.UUID;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class TrainingServiceImpl extends BaseServiceImpl<Training> implements TrainingService {
+@RequiredArgsConstructor
+public class TrainingServiceImpl extends BaseServiceImpl<Training, UUID> implements TrainingService {
     private final TrainingRepository trainingRepository;
+    private final TraineeRepository traineeRepository;
+    private final TrainerRepository trainerRepository;
+    private final TrainingTypeRepository trainingTypeRepository;
 
-    public TrainingServiceImpl(TrainingRepository trainingRepository) {
-        super(trainingRepository);
-        this.trainingRepository = trainingRepository;
+    @Override
+    @Transactional
+    public @Nonnull Training create(@Nonnull TrainingCreateRequest request) {
+        final var trainee = traineeRepository.findByUsername(request.getTrainee()).orElseThrow(
+                ResourceNotFoundException::new);
+        final var trainer = trainerRepository.findByUsername(request.getTrainer()).orElseThrow(
+                ResourceNotFoundException::new);
+        final var trainingType = trainingTypeRepository.findByNameIgnoreCase(request.getType()).orElseThrow(
+                ResourceNotFoundException::new);
+
+
+        var training = Training.builder().trainee(trainee).trainer(trainer).name(request.getName()).type(
+                trainingType).datetime(request.getDatetime()).durationMinutes(
+                        request.getDurationMinutes()).build();
+
+        return trainingRepository.save(training);
     }
 
     @Override
-    public @Nonnull Training create(@Nonnull Trainee trainee,
-                                    @Nonnull Trainer trainer,
-                                    @Nonnull String name,
-                                    @Nonnull TrainingType type,
-                                    @Nonnull ZonedDateTime datetime,
-                                    @Nonnull Duration duration) {
-        var training = Training.builder().trainee(trainee).trainer(trainer).name(name).type(
-                type).datetime(datetime).duration(duration).build();
-
-        trainingRepository.save(training);
-        return training;
+    public @Nonnull List<Training> search(@Nonnull TrainingSearchRequest request) {
+        return trainingRepository.findAll(request.toSpecification());
     }
 
     @Override
-    public @NonNull List<Training> findByTraineeUsername(@NonNull String username) {
-        return trainingRepository.findByTraineeUsername(username);
+    protected @Nonnull ListCrudRepository<Training, UUID> getRepository() {
+        return trainingRepository;
     }
-
-    @Override
-    public @NonNull List<Training> findByTrainerUsername(@NonNull String username) {
-        return trainingRepository.findByTrainerUsername(username);
-    }
-
 }

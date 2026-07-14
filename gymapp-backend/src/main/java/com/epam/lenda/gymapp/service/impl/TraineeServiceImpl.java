@@ -3,78 +3,140 @@ package com.epam.lenda.gymapp.service.impl;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainee;
-import com.epam.lenda.gymapp.repository.TraineeRepository;
-import com.epam.lenda.gymapp.repository.TrainerRepository;
-import com.epam.lenda.gymapp.repository.TrainingRepository;
+import com.epam.lenda.gymapp.model.Trainer;
+import com.epam.lenda.gymapp.model.TrainingAssignment;
+import com.epam.lenda.gymapp.repository.*;
 import com.epam.lenda.gymapp.service.AuthService;
+import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TraineeService;
 import com.epam.lenda.gymapp.util.Pair;
-import com.epam.lenda.gymapp.util.UserUtil;
 import jakarta.annotation.Nonnull;
-import java.time.LocalDate;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
-public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee> implements TraineeService {
+@RequiredArgsConstructor
+public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeService.TraineeCreateRequest, TraineeService.TraineeUpdateRequest> implements TraineeService {
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
-    private final AuthService authService;
+    private final TrainingAssignmentRepository trainingAssignmentRepository;
+    private final CredentialsService credentialsService;
     private final TrainingRepository trainingRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final AuthService authService;
 
-    public TraineeServiceImpl(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
-                              AuthService authService, TrainingRepository trainingRepository,
-                              PasswordEncoder passwordEncoder) {
-        super(traineeRepository);
-        this.traineeRepository = traineeRepository;
-        this.trainerRepository = trainerRepository;
-        this.authService = authService;
-        this.trainingRepository = trainingRepository;
-        this.passwordEncoder = passwordEncoder;
+    @Override
+    @Transactional
+    public @Nonnull Pair<Trainee, String> create(@Nonnull TraineeCreateRequest request) {
+        final var pair = createUser(request);
+        final var user = pair.first();
+        final var password = pair.second();
+
+        final var trainee = Trainee.builder().user(user).dateOfBirth(request.getDateOfBirth()).address(
+                request.getAddress()).build();
+
+        try {
+            traineeRepository.saveAndFlush(trainee);
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateUsernameException();
+        }
+
+        return Pair.of(trainee, password);
     }
 
     @Override
-    public @Nonnull Pair<Trainee, String> create(@Nonnull String firstName, @Nonnull String lastName,
-                                                 @Nonnull LocalDate dateOfBirth,
-                                                 @Nonnull String address) {
-        var credentials = authService.generateCredentials(firstName, lastName);
-        var trainee = Trainee.builder().dateOfBirth(dateOfBirth).address(address).firstName(firstName).lastName(
-                lastName).username(credentials.username()).password(credentials.passwordHash()).isActive(
-                        true).build();
-        traineeRepository.save(trainee);
+    @Transactional
+    public @Nonnull Trainee update(@Nonnull String username, @Nonnull TraineeUpdateRequest updateRequest) {
+        final var trainee = findByUsername(username);
 
-        return Pair.of(trainee, credentials.password());
+        updateUser(trainee.getUser(), updateRequest);
+        trainee.setAddress(updateRequest.getAddress());
+        trainee.setDateOfBirth(updateRequest.getDateOfBirth());
+
+        try {
+            traineeRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateUsernameException();
+        }
+
+        return trainee;
     }
 
     @Override
+    @Transactional
     public void delete(@Nonnull String username) {
         traineeRepository.findByUsername(username).ifPresent(trainee -> {
+            trainingRepository.deleteByTraineeId(trainee.getId());
             traineeRepository.delete(trainee);
-            trainingRepository.removeTraineeRefs(trainee.getId());
         });
     }
 
     @Override
-    public @Nonnull Trainee update(@Nonnull String username, @Nonnull TraineeService.UpdateRequest updateRequest) {
-        var trainee = traineeRepository.findByUsername(username).orElseThrow(ResourceNotFoundException::new);
+    @Transactional
+    public @Nonnull List<Trainer> updateTrainerList(@Nonnull String traineeUsername,
+                                                    @Nonnull List<String> trainerUsernames) {
+        final var trainee = findByUsername(traineeUsername);
+        final var newTrainers = trainerRepository.findByUsernames(trainerUsernames);
 
-        if (UserUtil.isUsernameTaken(updateRequest.username(), trainee.getId(), traineeRepository, trainerRepository)) {
-            throw new DuplicateUsernameException();
+        if (newTrainers.size() != trainerUsernames.size()) {
+            throw new ResourceNotFoundException();
         }
 
-        var passwordHash = passwordEncoder.encode(updateRequest.password());
+        final var existingAssignments = trainingAssignmentRepository.findByTraineeId(trainee.getId());
+        final var existingTrainerIds = existingAssignments.stream().map(TrainingAssignment::getTrainerId).collect(
+                Collectors.toSet());
 
-        trainee.setUsername(updateRequest.username());
-        trainee.setFirstName(updateRequest.firstName());
-        trainee.setLastName(updateRequest.lastName());
-        trainee.setPassword(passwordHash);
-        trainee.setIsActive(updateRequest.isActive());
-        trainee.setAddress(updateRequest.address());
-        trainee.setDateOfBirth(updateRequest.dateOfBirth());
+        removeTrainingAssignments(trainee, existingTrainerIds, newTrainers);
+        addTrainingAssignments(trainee, existingTrainerIds, newTrainers);
 
-        return trainee;
+        return newTrainers;
+    }
+
+    private void removeTrainingAssignments(@Nonnull Trainee trainee, @Nonnull Collection<UUID> existingTrainerIds,
+                                           @Nonnull Collection<Trainer> newTrainers) {
+        final var newTrainerIds = newTrainers.stream().map(Trainer::getId).collect(Collectors.toSet());
+
+        final var toRemoveTrainerIds = new HashSet<>(existingTrainerIds);
+        toRemoveTrainerIds.removeAll(newTrainerIds);
+
+        if (!toRemoveTrainerIds.isEmpty()) {
+            trainingAssignmentRepository.deleteByTraineeIdAndTrainerIds(trainee.getId(), toRemoveTrainerIds);
+        }
+    }
+
+    private void addTrainingAssignments(@Nonnull Trainee trainee, @Nonnull Collection<UUID> existingTrainerIds,
+                                        @Nonnull Collection<Trainer> newTrainers) {
+        final var toAddTrainers = newTrainers.stream().filter(trainer -> !existingTrainerIds.contains(
+                trainer.getId())).toList();
+
+
+        if (!toAddTrainers.isEmpty()) {
+            final var toAddAssignments = toAddTrainers.stream().map(trainer -> new TrainingAssignment(trainee,
+                    trainer)).toList();
+            trainingAssignmentRepository.saveAll(toAddAssignments);
+        }
+    }
+
+    @Override
+    protected @Nonnull BaseUserRepository<Trainee> getRepository() {
+        return traineeRepository;
+    }
+
+    @Override
+    protected @Nonnull CredentialsService getCredentialsService() {
+        return credentialsService;
+    }
+
+    @Override
+    protected @Nonnull AuthService getAuthService() {
+        return authService;
     }
 }

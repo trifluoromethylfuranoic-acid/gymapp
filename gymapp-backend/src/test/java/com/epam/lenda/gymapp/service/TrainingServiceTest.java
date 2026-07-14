@@ -9,20 +9,23 @@ import static org.mockito.Mockito.when;
 
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Training;
-import com.epam.lenda.gymapp.model.TrainingType;
+import com.epam.lenda.gymapp.repository.TraineeRepository;
+import com.epam.lenda.gymapp.repository.TrainerRepository;
 import com.epam.lenda.gymapp.repository.TrainingRepository;
+import com.epam.lenda.gymapp.repository.TrainingTypeRepository;
 import com.epam.lenda.gymapp.service.impl.TrainingServiceImpl;
 import jakarta.validation.ConstraintViolationException;
-import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.util.Date;
+import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -32,6 +35,12 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 class TrainingServiceTest {
     @MockitoBean
     private TrainingRepository trainingRepository;
+    @MockitoBean
+    private TraineeRepository traineeRepository;
+    @MockitoBean
+    private TrainerRepository trainerRepository;
+    @MockitoBean
+    private TrainingTypeRepository trainingTypeRepository;
 
     @Autowired
     private TrainingService trainingService;
@@ -40,27 +49,29 @@ class TrainingServiceTest {
     void create_success() {
         var trainee = Util.trainee(1, "trainee.username");
         var trainer = Util.trainer(2, "trainer.username");
-        var datetime = ZonedDateTime.of(2026, 7, 1, 10, 0, 0, 0, ZoneId.of("Europe/Kiev"));
-        var duration = Duration.ofHours(1);
+        var trainingType = Util.trainingType("Cardio");
+        var datetime = new Date();
 
-        var created = trainingService.create(trainee,
-                trainer,
-                "New training",
-                TrainingType.CARDIO,
-                datetime,
-                duration);
+        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
+        when(trainerRepository.findByUsername("trainer.username")).thenReturn(Optional.of(trainer));
+        when(trainingTypeRepository.findByNameIgnoreCase("Cardio")).thenReturn(Optional.of(trainingType));
+        when(trainingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var created = trainingService.create(TrainingService.TrainingCreateRequest.builder().trainee(
+                "trainee.username").trainer("trainer.username").name("New training").type("Cardio").datetime(
+                        datetime).durationMinutes(60).build());
 
         var captor = ArgumentCaptor.forClass(Training.class);
         verify(trainingRepository).save(captor.capture());
         var saved = captor.getValue();
         assertThat(saved.getTrainee()).isSameAs(trainee);
         assertThat(saved.getTrainer()).isSameAs(trainer);
-        assertThat(saved.getType()).isEqualTo(TrainingType.CARDIO);
-        assertThat(created.getTrainee().getUsername()).isEqualTo("trainee.username");
-        assertThat(created.getTrainer().getUsername()).isEqualTo("trainer.username");
+        assertThat(saved.getType()).isEqualTo(trainingType);
+        assertThat(created.getTrainee().getUser().getUsername()).isEqualTo("trainee.username");
+        assertThat(created.getTrainer().getUser().getUsername()).isEqualTo("trainer.username");
         assertThat(created.getName()).isEqualTo("New training");
         assertThat(created.getDatetime()).isEqualTo(datetime);
-        assertThat(created.getDuration()).isEqualTo(Duration.ofHours(1));
+        assertThat(created.getDurationMinutes()).isEqualTo(60);
     }
 
     @Test
@@ -68,20 +79,35 @@ class TrainingServiceTest {
         var trainee = Util.trainee(1, "trainee");
         var trainer = Util.trainer(1, "trainer");
 
-        assertThatThrownBy(() -> trainingService.create(trainee,
-                trainer,
-                "",
-                TrainingType.YOGA,
-                ZonedDateTime.now(),
-                Duration.ofMinutes(1))).isInstanceOf(ConstraintViolationException.class);
+        assertThatThrownBy(() -> trainingService.create(TrainingService.TrainingCreateRequest.builder().trainee(
+                "trainee").trainer("trainer").name("").type("Yoga").datetime(new Date()).durationMinutes(
+                        1).build())).isInstanceOf(ConstraintViolationException.class);
         verify(trainingRepository, never()).save(any());
     }
 
     @Test
     void findById_throwsWhenTrainingDoesNotExist() {
-        when(trainingRepository.findById(99L)).thenReturn(Optional.empty());
+        var id = UUID.randomUUID();
+        when(trainingRepository.findById(id)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> trainingService.findById(99L))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> trainingService.findById(id)).isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void search_delegatesToRepositoryWithSpecification() {
+        var from = new Date(1000);
+        var to = new Date(2000);
+        var training = Training.builder().trainee(Util.trainee(1, "trainee.username")).trainer(Util.trainer(2,
+                "trainer.username")).name("Training").type(Util.trainingType("Cardio")).datetime(from).durationMinutes(
+                        30).build();
+
+        when(trainingRepository.findAll(any(Specification.class))).thenReturn(List.of(training));
+
+        var result = trainingService.search(TrainingService.TrainingSearchRequest.builder().fromDateInclusive(
+                from).toDateInclusive(to).traineeUsername("trainee.username").trainerUsername(
+                        "trainer.username").build());
+
+        assertThat(result).containsExactly(training);
+        verify(trainingRepository).findAll(any(Specification.class));
     }
 }

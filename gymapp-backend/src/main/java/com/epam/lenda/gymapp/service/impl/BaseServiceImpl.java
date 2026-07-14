@@ -1,25 +1,22 @@
 package com.epam.lenda.gymapp.service.impl;
 
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
-import com.epam.lenda.gymapp.repository.BaseRepository;
 import com.epam.lenda.gymapp.service.BaseService;
+import jakarta.annotation.Nonnull;
 import java.util.List;
 import org.jspecify.annotations.NonNull;
+import org.springframework.data.repository.ListCrudRepository;
 
-public abstract class BaseServiceImpl<T> implements BaseService<T> {
-    protected final BaseRepository<T> repo;
-
-    public BaseServiceImpl(BaseRepository<T> repo) {
-        this.repo = repo;
-    }
-
+public abstract class BaseServiceImpl<T, ID> implements BaseService<T, ID> {
     @Override
-    public @NonNull T findById(long id) {
-        return repo.findById(id).orElseThrow(ResourceNotFoundException::new);
+    public @NonNull T findById(ID id) {
+        return getRepository().findById(id).orElseThrow(ResourceNotFoundException::new);
     }
 
     @Override
     public @NonNull List<T> findAll() {
-        return repo.findAll();
+        return getRepository().findAll();
     }
+
+    protected abstract @Nonnull ListCrudRepository<T, ID> getRepository();
 }

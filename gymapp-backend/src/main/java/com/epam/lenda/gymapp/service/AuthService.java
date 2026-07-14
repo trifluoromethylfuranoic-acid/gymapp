@@ -1,17 +1,24 @@
 package com.epam.lenda.gymapp.service;
 
-import jakarta.annotation.Nonnull;
+import com.epam.lenda.gymapp.model.User;
+import java.util.Optional;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.extern.jackson.Jacksonized;
 
 public interface AuthService {
-    @Nonnull
-    String generateUsername(@Nonnull String firstName, @Nonnull String lastName);
+    Optional<User> authenticate(AuthenticationRequest authenticationRequest);
 
-    @Nonnull
-    String generatePassword();
+    User requireAuthentication(AuthenticationRequest authenticationRequest);
 
-    @Nonnull
-    Credentials generateCredentials(@Nonnull String firstName, @Nonnull String lastName);
+    @Getter
+    @AllArgsConstructor
+    @Builder
+    @Jacksonized
+    class AuthenticationRequest {
+        private String username;
 
-    record Credentials(@Nonnull String username, @Nonnull String password, @Nonnull String passwordHash) {
+        private String password;
     }
 }
