@@ -1,98 +1,71 @@
 package com.epam.lenda.gymapp.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.when;
 
-import com.epam.lenda.gymapp.model.Trainee;
-import com.epam.lenda.gymapp.repository.TraineeRepository;
-import com.epam.lenda.gymapp.repository.TrainerRepository;
+import com.epam.lenda.gymapp.model.User;
+import com.epam.lenda.gymapp.repository.UserRepository;
 import com.epam.lenda.gymapp.service.impl.AuthServiceImpl;
-import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Optional;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
 
-@ExtendWith(MockitoExtension.class)
+@ExtendWith(SpringExtension.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Import({AuthServiceImpl.class})
 class AuthServiceTest {
-    @Mock
-    private TrainerRepository trainerRepository;
-    @Mock
-    private TraineeRepository traineeRepository;
-    @Mock
-    private SecureRandom secureRandom;
-    @Mock
+    @MockitoBean
+    private UserRepository userRepository;
+    @MockitoBean
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
     private AuthService authService;
 
-    private final int defaultPasswordLength = 10;
+    @Test
+    void authenticate_returnsUserWhenPasswordMatches() {
+        var user = user("trainee.username", "encoded-password");
 
-    @BeforeEach
-    void setup() {
-        authService = new AuthServiceImpl(traineeRepository,
-                trainerRepository,
-                secureRandom,
-                passwordEncoder);
-        ReflectionTestUtils.setField(authService, "defaultPasswordLength", defaultPasswordLength);
+        when(userRepository.findByUsername("trainee.username")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("raw-password", "encoded-password")).thenReturn(true);
+
+        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("trainee.username",
+                "raw-password"));
+
+        assertThat(authenticated).containsSame(user);
     }
 
     @Test
-    void generateUsername_concatenates() {
-        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
-        when(trainerRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
+    void authenticate_returnsEmptyWhenPasswordDoesNotMatch() {
+        var user = user("trainee.username", "encoded-password");
 
-        assertThat(authService.generateUsername("John", "Doe")).isEqualTo("John.Doe");
+        when(userRepository.findByUsername("trainee.username")).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
+
+        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("trainee.username",
+                "wrong-password"));
+
+        assertThat(authenticated).isEmpty();
     }
 
     @Test
-    @MockitoSettings(strictness = Strictness.LENIENT)
-    void generateUsername_appendsCounterUntilUnique() {
-        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.of(new Trainee()));
-        when(traineeRepository.findByUsername("John.Doe1")).thenReturn(Optional.of(new Trainee()));
-        when(traineeRepository.findByUsername("John.Doe2")).thenReturn(Optional.empty());
+    void authenticate_returnsEmptyWhenUserDoesNotExist() {
+        when(userRepository.findByUsername("missing.username")).thenReturn(Optional.empty());
 
-        when(trainerRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
-        when(trainerRepository.findByUsername("John.Doe1")).thenReturn(Optional.empty());
-        when(trainerRepository.findByUsername("John.Doe2")).thenReturn(Optional.empty());
+        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("missing.username",
+                                                                                          "raw-password"));
 
-        assertThat(authService.generateUsername("John", "Doe")).isEqualTo("John.Doe2");
+        assertThat(authenticated).isEmpty();
     }
 
-    @Test
-    void generatePassword_hasCorrectLength() {
-        stubNextBytes();
-
-        assertThat(authService.generatePassword()).hasSize(defaultPasswordLength);
-    }
-
-    @Test
-    void generateCredentials_encodesPassword() {
-        when(traineeRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
-        when(trainerRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
-
-        stubNextBytes();
-
-        authService.generateCredentials("John", "Doe");
-
-        verify(passwordEncoder).encode(any());
-    }
-
-    private void stubNextBytes() {
-        doAnswer(invocation -> {
-            var bytes = (byte[]) invocation.getArgument(0);
-            Arrays.fill(bytes, (byte) 0x7C);
-            return null;
-        }).when(secureRandom).nextBytes(any());
+    private static User user(String username, String password) {
+        return User.builder().firstName("First").lastName("Last").username(username).password(password).isActive(
+                true).build();
     }
 }

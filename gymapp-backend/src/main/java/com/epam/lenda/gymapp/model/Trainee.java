@@ -1,25 +1,32 @@
 package com.epam.lenda.gymapp.model;
 
-import java.time.LocalDate;
+import jakarta.persistence.*;
+import java.util.Date;
 import lombok.*;
-import lombok.experimental.SuperBuilder;
 
-@EqualsAndHashCode(callSuper = true)
-@ToString(callSuper = true)
-@Data
+@ToString
 @NoArgsConstructor
-@SuperBuilder
-public class Trainee extends User implements HasId {
-    private Long id;
+@AllArgsConstructor
+@Getter
+@Setter
+@Builder
+@Entity
+public class Trainee extends AbstractEntity implements IsUser {
+    @OneToOne(optional = false, cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false, unique = true)
+    private User user;
 
-    private LocalDate dateOfBirth;
+    @Column(nullable = true)
+    private Date dateOfBirth;
 
+    @Column(nullable = true)
     private String address;
 
-    public Trainee(String firstName, String lastName, String username, String password, Boolean isActive, Long id,
-                   LocalDate dateOfBirth, String address) {
-        super(firstName, lastName, username, password, isActive);
-        this.id = id;
+    public Trainee(String firstName, String lastName, String username, String password, Boolean isActive,
+                   Date dateOfBirth, String address) {
+        super();
+        this.user = User.builder().firstName(firstName).lastName(lastName).username(username).password(
+                password).isActive(isActive).build();
         this.dateOfBirth = dateOfBirth;
         this.address = address;
     }

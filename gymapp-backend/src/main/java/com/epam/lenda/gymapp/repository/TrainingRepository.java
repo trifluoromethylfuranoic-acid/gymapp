@@ -2,15 +2,12 @@ package com.epam.lenda.gymapp.repository;
 
 import com.epam.lenda.gymapp.model.Training;
 import jakarta.annotation.Nonnull;
-import java.util.List;
+import java.util.UUID;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.stereotype.Repository;
 
-
-public interface TrainingRepository extends BaseRepository<Training> {
-    void removeTraineeRefs(long traineeId);
-
-    @Nonnull
-    List<Training> findByTraineeUsername(@Nonnull String username);
-
-    @Nonnull
-    List<Training> findByTrainerUsername(@Nonnull String username);
+@Repository
+public interface TrainingRepository extends JpaRepository<Training, UUID>, JpaSpecificationExecutor<Training> {
+    void deleteByTraineeId(@Nonnull UUID id);
 }

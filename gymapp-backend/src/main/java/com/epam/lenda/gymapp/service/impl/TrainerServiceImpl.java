@@ -3,67 +3,85 @@ package com.epam.lenda.gymapp.service.impl;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainer;
-import com.epam.lenda.gymapp.model.TrainingType;
-import com.epam.lenda.gymapp.repository.TraineeRepository;
-import com.epam.lenda.gymapp.repository.TrainerRepository;
+import com.epam.lenda.gymapp.repository.*;
 import com.epam.lenda.gymapp.service.AuthService;
+import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TrainerService;
 import com.epam.lenda.gymapp.util.Pair;
-import com.epam.lenda.gymapp.util.UserUtil;
 import jakarta.annotation.Nonnull;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@Validated
 @Slf4j
-public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer> implements TrainerService {
+@RequiredArgsConstructor
+public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, TrainerService.TrainerCreateRequest, TrainerService.TrainerUpdateRequest> implements TrainerService {
     private final TrainerRepository trainerRepository;
-    private final TraineeRepository traineeRepository;
+    private final CredentialsService credentialsService;
+    private final TrainingTypeRepository trainingTypeRepository;
     private final AuthService authService;
-    private final PasswordEncoder passwordEncoder;
-
-    public TrainerServiceImpl(TrainerRepository trainerRepository, TraineeRepository traineeRepository,
-                              AuthService authService, PasswordEncoder passwordEncoder) {
-        super(trainerRepository);
-        this.trainerRepository = trainerRepository;
-        this.traineeRepository = traineeRepository;
-        this.authService = authService;
-        this.passwordEncoder = passwordEncoder;
-    }
+    private final TrainingAssignmentRepository trainingAssignmentRepository;
 
     @Override
-    public @Nonnull Pair<Trainer, String> create(@NonNull String firstName, @NonNull String lastName,
-                                                 @Nonnull TrainingType specialization) {
-        var credentials = authService.generateCredentials(firstName, lastName);
-        var trainer = Trainer.builder().specialization(specialization).firstName(firstName).lastName(
-                lastName).username(credentials.username()).password(credentials.passwordHash()).isActive(
-                        true).build();
-        trainerRepository.save(trainer);
+    @Transactional
+    public @Nonnull Pair<Trainer, String> create(@Nonnull TrainerCreateRequest request) {
+        final var pair = createUser(request);
+        final var user = pair.first();
+        final var password = pair.second();
+        final var specialization = trainingTypeRepository.findByNameIgnoreCase(
+                request.getSpecialization().trim()).orElseThrow(ResourceNotFoundException::new);
 
-        return Pair.of(trainer, credentials.password());
-    }
+        final var trainer = new Trainer(user, specialization);
 
-    @Override
-    public @Nonnull Trainer update(@Nonnull String username, @Nonnull TrainerService.UpdateRequest updateRequest) {
-        var trainee = trainerRepository.findByUsername(username).orElseThrow(ResourceNotFoundException::new);
-
-        if (UserUtil.isUsernameTaken(updateRequest.username(), trainee.getId(), trainerRepository, traineeRepository)) {
+        try {
+            trainerRepository.saveAndFlush(trainer);
+        } catch (DataIntegrityViolationException e) {
             throw new DuplicateUsernameException();
         }
 
-        var passwordHash = passwordEncoder.encode(updateRequest.password());
+        return Pair.of(trainer, password);
+    }
 
-        trainee.setUsername(updateRequest.username());
-        trainee.setFirstName(updateRequest.firstName());
-        trainee.setLastName(updateRequest.lastName());
-        trainee.setPassword(passwordHash);
-        trainee.setIsActive(updateRequest.isActive());
-        trainee.setSpecialization(updateRequest.specialization());
+    @Override
+    @Transactional
+    public @Nonnull Trainer update(@Nonnull String username, @Nonnull TrainerUpdateRequest request) {
+        final var trainer = findByUsername(username);
+        final var specialization = trainingTypeRepository.findByNameIgnoreCase(
+                request.getSpecialization().trim()).orElseThrow(ResourceNotFoundException::new);
+        updateUser(trainer.getUser(), request);
+        trainer.setSpecialization(specialization);
 
-        return trainee;
+        try {
+            trainerRepository.flush();
+        } catch (DataIntegrityViolationException e) {
+            throw new DuplicateUsernameException();
+        }
+
+        return trainer;
+    }
+
+    @Override
+    public @NonNull List<Trainer> findNotAssignedToTrainee(@NonNull String traineeUsername) {
+        return trainingAssignmentRepository.findTrainersNotAssignedToTrainee(traineeUsername);
+    }
+
+    @Override
+    protected @Nonnull BaseUserRepository<Trainer> getRepository() {
+        return trainerRepository;
+    }
+
+    @Override
+    protected @Nonnull CredentialsService getCredentialsService() {
+        return credentialsService;
+    }
+
+    @Override
+    protected @NonNull AuthService getAuthService() {
+        return authService;
     }
 }

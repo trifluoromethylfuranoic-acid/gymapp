@@ -5,17 +5,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainer;
-import com.epam.lenda.gymapp.model.TrainingType;
 import com.epam.lenda.gymapp.repository.TraineeRepository;
 import com.epam.lenda.gymapp.repository.TrainerRepository;
+import com.epam.lenda.gymapp.repository.TrainingAssignmentRepository;
+import com.epam.lenda.gymapp.repository.TrainingTypeRepository;
 import com.epam.lenda.gymapp.service.impl.TrainerServiceImpl;
 import jakarta.validation.ConstraintViolationException;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -36,7 +39,13 @@ class TrainerServiceTest {
     @MockitoBean
     private TrainerRepository trainerRepository;
     @MockitoBean
+    private TrainingTypeRepository trainingTypeRepository;
+    @MockitoBean
+    private TrainingAssignmentRepository trainingAssignmentRepository;
+    @MockitoBean
     private PasswordEncoder passwordEncoder;
+    @MockitoBean
+    private CredentialsService credentialsService;
     @MockitoBean
     private AuthService authService;
 
@@ -45,61 +54,63 @@ class TrainerServiceTest {
 
     @Test
     void create_createsActiveTrainer() {
-        when(authService.generateCredentials(any(), any())).thenReturn(new AuthService.Credentials("Alice.Apple",
-                                                                                                   "password",
-                                                                                                   "encoded-password"));
+        var yoga = Util.trainingType("Yoga");
+        when(credentialsService.generateCredentials(any())).thenReturn(new CredentialsService.Credentials("Alice.Apple",
+                "password",
+                "encoded-password"));
+        when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(yoga));
 
-        trainerService.create("Alice", "Apple", TrainingType.YOGA);
+        trainerService.create(TrainerService.TrainerCreateRequest.builder().firstName("Alice").lastName(
+                "Apple").specialization("Yoga").build());
 
         var captor = ArgumentCaptor.forClass(Trainer.class);
-        verify(trainerRepository).save(captor.capture());
-        assertThat(captor.getValue().getPassword()).isEqualTo("encoded-password");
-        assertThat(captor.getValue().getIsActive()).isTrue();
-        assertThat(captor.getValue().getSpecialization()).isEqualTo(TrainingType.YOGA);
+        verify(trainerRepository).saveAndFlush(captor.capture());
+        assertThat(captor.getValue().getUser().getPassword()).isEqualTo("encoded-password");
+        assertThat(captor.getValue().getUser().getIsActive()).isTrue();
+        assertThat(captor.getValue().getSpecialization()).isEqualTo(yoga);
     }
 
     @Test
     void update_successWhenChangingUsername() {
         var trainer = Util.trainer(1, "old.username");
-        var request = TrainerService.UpdateRequest.builder().username("new.username").password("new.password").isActive(
-                false).firstName("NewFirst").lastName("NewLast").specialization(TrainingType.YOGA).build();
+        var yoga = Util.trainingType("Yoga");
+        var request = TrainerService.TrainerUpdateRequest.builder().username("new.username").firstName(
+                "NewFirst").lastName("NewLast").specialization("Yoga").build();
 
         when(trainerRepository.findByUsername("old.username")).thenReturn(Optional.of(trainer));
-        when(traineeRepository.findByUsername("new.username")).thenReturn(Optional.empty());
-        when(trainerRepository.findByUsername("new.username")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode(any())).thenReturn("encoded-password");
+        when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(yoga));
 
         var newTrainee = trainerService.update("old.username", request);
 
-        assertThat(newTrainee.getUsername()).isEqualTo("new.username");
-        assertThat(newTrainee.getPassword()).isEqualTo("encoded-password");
-        assertThat(newTrainee.getFirstName()).isEqualTo("NewFirst");
-        assertThat(newTrainee.getLastName()).isEqualTo("NewLast");
-        assertThat(newTrainee.getSpecialization()).isEqualTo(TrainingType.YOGA);
-        assertThat(newTrainee.getIsActive()).isFalse();
+        assertThat(newTrainee.getUser().getUsername()).isEqualTo("new.username");
+        assertThat(newTrainee.getUser().getFirstName()).isEqualTo("NewFirst");
+        assertThat(newTrainee.getUser().getLastName()).isEqualTo("NewLast");
+        assertThat(newTrainee.getSpecialization()).isEqualTo(yoga);
     }
 
     @Test
     void update_successWhenNotChangingUsername() {
         var trainer = Util.trainer(1, "trainer.username");
-        var request = TrainerService.UpdateRequest.builder().username("trainer.username").password(
-                "new.password").isActive(
-                        false).firstName("NewFirst").lastName("NewLast").specialization(TrainingType.YOGA).build();
+        var yoga = Util.trainingType("Yoga");
+        var request = TrainerService.TrainerUpdateRequest.builder().username("trainer.username").firstName(
+                "NewFirst").lastName("NewLast").specialization("Yoga").build();
 
 
         when(trainerRepository.findByUsername("trainer.username")).thenReturn(Optional.of(trainer));
+        when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(yoga));
 
         var newTrainer = assertDoesNotThrow(() -> trainerService.update("trainer.username", request));
-        assertThat(newTrainer.getUsername()).isEqualTo("trainer.username");
+        assertThat(newTrainer.getUser().getUsername()).isEqualTo("trainer.username");
     }
 
     @Test
     void update_throwsOnInvalidUsername() {
         var trainer = Util.trainer(1, "trainer.username");
-        var request = TrainerService.UpdateRequest.builder().username("new/username").password("new.password").isActive(
-                false).firstName("NewFirst").lastName("NewLast").specialization(TrainingType.YOGA).build();
+        var request = TrainerService.TrainerUpdateRequest.builder().username("new/username").firstName(
+                "NewFirst").lastName("NewLast").specialization("Yoga").build();
 
         when(trainerRepository.findByUsername("trainer.username")).thenReturn(Optional.of(trainer));
+        when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(Util.trainingType("Yoga")));
 
         assertThrows(ConstraintViolationException.class, () -> trainerService.update("trainer.username", request));
     }
@@ -107,13 +118,13 @@ class TrainerServiceTest {
     @Test
     void update_throwsOnDuplicateUsername() {
         var trainer = Util.trainer(1, "old.username");
-        var trainer2 = Util.trainer(2, "existing.username");
-        var request = TrainerService.UpdateRequest.builder().username("existing.username").password(
-                "new.password").isActive(
-                        false).firstName("NewFirst").lastName("NewLast").specialization(TrainingType.YOGA).build();
+        var request = TrainerService.TrainerUpdateRequest.builder().username("existing.username").firstName(
+                "NewFirst").lastName("NewLast").specialization("Yoga").build();
 
         when(trainerRepository.findByUsername("old.username")).thenReturn(Optional.of(trainer));
-        when(trainerRepository.findByUsername("existing.username")).thenReturn(Optional.of(trainer2));
+        when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(Util.trainingType("Yoga")));
+
+        when(credentialsService.isUsernameTaken(eq("existing.username"), any())).thenReturn(true);
 
         assertThrows(DuplicateUsernameException.class, () -> trainerService.update("old.username", request));
     }
@@ -124,5 +135,19 @@ class TrainerServiceTest {
 
         assertThatThrownBy(() -> trainerService.findByUsername("missing"))
                 .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void findNotAssignedToTrainee_returnsRepositoryResult() {
+        var trainer1 = Util.trainer(1, "trainer.one");
+        var trainer2 = Util.trainer(2, "trainer.two");
+
+        when(trainingAssignmentRepository.findTrainersNotAssignedToTrainee("trainee.username")).thenReturn(List.of(
+                trainer1, trainer2));
+
+        var trainers = trainerService.findNotAssignedToTrainee("trainee.username");
+
+        assertThat(trainers).containsExactly(trainer1, trainer2);
+        verify(trainingAssignmentRepository).findTrainersNotAssignedToTrainee("trainee.username");
     }
 }

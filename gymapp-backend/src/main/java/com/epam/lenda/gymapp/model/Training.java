@@ -1,28 +1,35 @@
 package com.epam.lenda.gymapp.model;
 
-import java.time.Duration;
-import java.time.ZonedDateTime;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import jakarta.persistence.*;
+import java.util.Date;
+import lombok.*;
 
-@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Training implements HasId {
-    private Long id;
-
+@Getter
+@Setter
+@ToString
+@Entity
+public class Training extends AbstractEntity {
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false)
     private Trainee trainee;
 
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false)
     private Trainer trainer;
 
+    @Column(nullable = false)
     private String name;
 
+    @ManyToOne(optional = false, fetch = FetchType.EAGER)
+    @JoinColumn(nullable = false)
     private TrainingType type;
 
-    private ZonedDateTime datetime;
+    @Column(nullable = false)
+    private Date datetime;
 
-    private Duration duration;
+    @Column(nullable = false)
+    private Integer durationMinutes;
 }

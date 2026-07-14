@@ -1,41 +1,41 @@
 package com.epam.lenda.gymapp.service;
 
 import com.epam.lenda.gymapp.model.Trainee;
-import com.epam.lenda.gymapp.util.Pair;
-import com.epam.lenda.gymapp.validation.annotation.FirstAndLastName;
-import com.epam.lenda.gymapp.validation.annotation.Password;
-import com.epam.lenda.gymapp.validation.annotation.Username;
+import com.epam.lenda.gymapp.model.Trainer;
+import com.epam.lenda.gymapp.validation.annotation.NullableNotBlank;
 import jakarta.annotation.Nonnull;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
-import java.time.LocalDate;
-import lombok.Builder;
+import java.util.Date;
+import java.util.List;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import lombok.extern.jackson.Jacksonized;
 import org.springframework.validation.annotation.Validated;
 
 @Validated
-public interface TraineeService extends UpdatableUserService<Trainee, TraineeService.UpdateRequest>, DeletableUserService<Trainee> {
-    /**
-     * Creates and saves new trainee with generated credentials
-     *
-     * @return pair of created trainee and their password
-     */
+public interface TraineeService extends BaseUserService<Trainee, TraineeService.TraineeCreateRequest, TraineeService.TraineeUpdateRequest>, DeletableUserService {
     @Nonnull
-    Pair<Trainee, String> create(@NotBlank @Valid @FirstAndLastName String firstName,
-                                 @NotBlank @Valid @FirstAndLastName String lastName,
-                                 @NotNull @Valid @Past LocalDate dateOfBirth,
-                                 @NotBlank @Valid String address);
+    List<Trainer> updateTrainerList(@Nonnull String traineeUsername, @Nonnull List<String> trainerUsernames);
 
-    @Builder
-    record UpdateRequest(
-                         @NotBlank @Username String username,
-                         @NotBlank @Password String password,
-                         boolean isActive,
-                         @NotBlank @FirstAndLastName String firstName,
-                         @NotBlank @FirstAndLastName String lastName,
-                         @NotNull @Past LocalDate dateOfBirth,
-                         @NotBlank String address
-    ) {
+    @Getter
+    @SuperBuilder
+    @Jacksonized
+    class TraineeCreateRequest extends UserCreateRequest {
+        @Past
+        Date dateOfBirth;
+
+        @NullableNotBlank
+        String address;
+    }
+
+    @Getter
+    @SuperBuilder
+    @Jacksonized
+    class TraineeUpdateRequest extends UserUpdateRequest {
+        @Past
+        Date dateOfBirth;
+
+        @NullableNotBlank
+        String address;
     }
 }
