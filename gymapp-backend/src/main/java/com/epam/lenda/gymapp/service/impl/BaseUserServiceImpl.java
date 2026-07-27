@@ -1,48 +1,39 @@
 package com.epam.lenda.gymapp.service.impl;
 
-import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
+import com.epam.lenda.gymapp.dto.request.CreateUserRequest;
+import com.epam.lenda.gymapp.dto.request.UpdateUserRequest;
+import com.epam.lenda.gymapp.exception.IllegalStateTransitionException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.IsUser;
 import com.epam.lenda.gymapp.model.User;
 import com.epam.lenda.gymapp.repository.BaseUserRepository;
-import com.epam.lenda.gymapp.service.AuthService;
 import com.epam.lenda.gymapp.service.BaseUserService;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.util.Pair;
 import jakarta.annotation.Nonnull;
 import java.util.UUID;
-import org.jspecify.annotations.NonNull;
 import org.springframework.transaction.annotation.Transactional;
 
-public abstract class BaseUserServiceImpl<T extends IsUser, C extends BaseUserService.UserCreateRequest, U extends BaseUserService.UserUpdateRequest> extends BaseServiceImpl<T, UUID> implements BaseUserService<T, C, U> {
+public abstract class BaseUserServiceImpl<T extends IsUser, C extends CreateUserRequest, U extends UpdateUserRequest> extends BaseServiceImpl<T, UUID> implements BaseUserService<T, C, U> {
 
     @Transactional
     public @Nonnull T findByUsername(@Nonnull String username) {
-        return getRepository().findByUsername(username).orElseThrow(ResourceNotFoundException::new);
+        return getRepository().findByUsername(username).orElseThrow(() -> new ResourceNotFoundException(
+                getResourceName(), username));
     }
 
     @Override
     @Transactional
-    public @NonNull T updatePassword(@NonNull String username, @Nonnull PasswordChangeRequest request) {
-        final var authentication = new AuthService.AuthenticationRequest(username, request.getOldPassword());
-        getAuthService().requireAuthentication(authentication);
-
-        final var entity = findByUsername(username);
-        final var user = entity.getUser();
-        final var passwordHash = getCredentialsService().encodePassword(request.getNewPassword());
-
-        user.setPassword(passwordHash);
-
-        return entity;
-    }
-
-    @Override
-    @Transactional
-    public @Nonnull T toggleActivation(@Nonnull String username) {
+    public @Nonnull T updateActiveStatus(@Nonnull String username, boolean isActive) {
         final var entity = findByUsername(username);
         final var user = entity.getUser();
 
-        user.setIsActive(!user.getIsActive());
+        if (isActive == user.getIsActive()) {
+            final var activeString = isActive ? "active" : "inactive";
+            throw new IllegalStateTransitionException(activeString, activeString);
+        }
+
+        user.setIsActive(isActive);
 
         return entity;
     }
@@ -55,19 +46,13 @@ public abstract class BaseUserServiceImpl<T extends IsUser, C extends BaseUserSe
     }
 
     protected void updateUser(@Nonnull User user, @Nonnull U request) {
-        if (getCredentialsService().isUsernameTaken(request.getUsername(), user.getId())) {
-            throw new DuplicateUsernameException();
-        }
-
         user.setFirstName(request.getFirstName());
         user.setLastName(request.getLastName());
-        user.setUsername(request.getUsername());
+        user.setIsActive(request.getIsActive());
     }
 
     @Override
     protected abstract @Nonnull BaseUserRepository<T> getRepository();
 
     protected abstract @Nonnull CredentialsService getCredentialsService();
-
-    protected abstract @Nonnull AuthService getAuthService();
 }

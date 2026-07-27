@@ -4,3 +4,6 @@ spring:
 application:
   security:
     defaultPasswordLength: 10
+logging:
+  pattern:
+    level: "%5p [%X{transactionId}]"

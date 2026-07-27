@@ -1,5 +1,7 @@
 package com.epam.lenda.gymapp.service.impl;
 
+import com.epam.lenda.gymapp.dto.request.CreateTrainingRequest;
+import com.epam.lenda.gymapp.dto.request.SearchTrainingRequest;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Training;
 import com.epam.lenda.gymapp.repository.TraineeRepository;
@@ -11,6 +13,7 @@ import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,14 +28,14 @@ public class TrainingServiceImpl extends BaseServiceImpl<Training, UUID> impleme
 
     @Override
     @Transactional
-    public @Nonnull Training create(@Nonnull TrainingCreateRequest request) {
+    public @Nonnull Training create(@Nonnull CreateTrainingRequest request) {
         final var trainee = traineeRepository.findByUsername(request.getTrainee()).orElseThrow(
-                ResourceNotFoundException::new);
+                () -> new ResourceNotFoundException("trainee", request.getTrainee()));
         final var trainer = trainerRepository.findByUsername(request.getTrainer()).orElseThrow(
-                ResourceNotFoundException::new);
-        final var trainingType = trainingTypeRepository.findByNameIgnoreCase(request.getType()).orElseThrow(
-                ResourceNotFoundException::new);
-
+                () -> new ResourceNotFoundException("trainer", request.getTrainer()));
+        final var trainingTypeName = request.getType().trim();
+        final var trainingType = trainingTypeRepository.findByNameIgnoreCase(trainingTypeName).orElseThrow(
+                () -> new ResourceNotFoundException("training type", trainingTypeName));
 
         var training = Training.builder().trainee(trainee).trainer(trainer).name(request.getName()).type(
                 trainingType).datetime(request.getDatetime()).durationMinutes(
@@ -42,12 +45,17 @@ public class TrainingServiceImpl extends BaseServiceImpl<Training, UUID> impleme
     }
 
     @Override
-    public @Nonnull List<Training> search(@Nonnull TrainingSearchRequest request) {
+    public @Nonnull List<Training> search(@Nonnull SearchTrainingRequest request) {
         return trainingRepository.findAll(request.toSpecification());
     }
 
     @Override
     protected @Nonnull ListCrudRepository<Training, UUID> getRepository() {
         return trainingRepository;
+    }
+
+    @Override
+    protected @NonNull String getResourceName() {
+        return "training";
     }
 }

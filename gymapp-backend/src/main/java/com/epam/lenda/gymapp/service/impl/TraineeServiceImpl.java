@@ -1,12 +1,13 @@
 package com.epam.lenda.gymapp.service.impl;
 
+import com.epam.lenda.gymapp.dto.request.CreateTraineeRequest;
+import com.epam.lenda.gymapp.dto.request.UpdateTraineeRequest;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.Trainer;
 import com.epam.lenda.gymapp.model.TrainingAssignment;
 import com.epam.lenda.gymapp.repository.*;
-import com.epam.lenda.gymapp.service.AuthService;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TraineeService;
 import com.epam.lenda.gymapp.util.Pair;
@@ -18,6 +19,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,17 +27,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeService.TraineeCreateRequest, TraineeService.TraineeUpdateRequest> implements TraineeService {
+public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, CreateTraineeRequest, UpdateTraineeRequest> implements TraineeService {
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
     private final TrainingAssignmentRepository trainingAssignmentRepository;
     private final CredentialsService credentialsService;
     private final TrainingRepository trainingRepository;
-    private final AuthService authService;
 
     @Override
     @Transactional
-    public @Nonnull Pair<Trainee, String> create(@Nonnull TraineeCreateRequest request) {
+    public @Nonnull Pair<Trainee, String> create(@Nonnull CreateTraineeRequest request) {
         final var pair = createUser(request);
         final var user = pair.first();
         final var password = pair.second();
@@ -54,18 +55,12 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeServ
 
     @Override
     @Transactional
-    public @Nonnull Trainee update(@Nonnull String username, @Nonnull TraineeUpdateRequest updateRequest) {
+    public @Nonnull Trainee update(@Nonnull String username, @Nonnull UpdateTraineeRequest updateRequest) {
         final var trainee = findByUsername(username);
 
         updateUser(trainee.getUser(), updateRequest);
         trainee.setAddress(updateRequest.getAddress());
         trainee.setDateOfBirth(updateRequest.getDateOfBirth());
-
-        try {
-            traineeRepository.flush();
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateUsernameException();
-        }
 
         return trainee;
     }
@@ -73,10 +68,16 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeServ
     @Override
     @Transactional
     public void delete(@Nonnull String username) {
-        traineeRepository.findByUsername(username).ifPresent(trainee -> {
-            trainingRepository.deleteByTraineeId(trainee.getId());
-            traineeRepository.delete(trainee);
-        });
+        final var trainee = findByUsername(username);
+        trainingRepository.deleteByTraineeId(trainee.getId());
+        trainingAssignmentRepository.deleteByTraineeId(trainee.getId());
+        traineeRepository.delete(trainee);
+    }
+
+    @Override
+    public @Nonnull List<Trainer> findActiveTrainersNotAssignedToTrainee(@Nonnull String traineeUsername) {
+        findByUsername(traineeUsername);
+        return trainingAssignmentRepository.findActiveTrainersNotAssignedToTrainee(traineeUsername);
     }
 
     @Override
@@ -87,7 +88,10 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeServ
         final var newTrainers = trainerRepository.findByUsernames(trainerUsernames);
 
         if (newTrainers.size() != trainerUsernames.size()) {
-            throw new ResourceNotFoundException();
+            var foundNamesSet = newTrainers.stream().map(trainer -> trainer.getUser().getUsername()).collect(
+                    Collectors.toSet());
+            var missingNames = trainerUsernames.stream().filter(trainer -> !foundNamesSet.contains(trainer)).toList();
+            throw new ResourceNotFoundException(getResourceName(), missingNames.toArray());
         }
 
         final var existingAssignments = trainingAssignmentRepository.findByTraineeId(trainee.getId());
@@ -98,6 +102,14 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeServ
         addTrainingAssignments(trainee, existingTrainerIds, newTrainers);
 
         return newTrainers;
+    }
+
+    @Override
+    @Transactional
+    public @Nonnull List<Trainer> getTrainerList(@NonNull String username) {
+        final var trainee = findByUsername(username);
+        return trainingAssignmentRepository.findByTraineeId(trainee.getId()).stream().map(
+                TrainingAssignment::getTrainer).toList();
     }
 
     private void removeTrainingAssignments(@Nonnull Trainee trainee, @Nonnull Collection<UUID> existingTrainerIds,
@@ -131,12 +143,12 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, TraineeServ
     }
 
     @Override
-    protected @Nonnull CredentialsService getCredentialsService() {
-        return credentialsService;
+    protected @NonNull String getResourceName() {
+        return "trainee";
     }
 
     @Override
-    protected @Nonnull AuthService getAuthService() {
-        return authService;
+    protected @Nonnull CredentialsService getCredentialsService() {
+        return credentialsService;
     }
 }

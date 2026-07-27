@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import com.epam.lenda.gymapp.dto.request.CreateUserRequest;
 import com.epam.lenda.gymapp.repository.UserRepository;
 import java.security.SecureRandom;
 import java.util.Arrays;
@@ -43,7 +44,7 @@ class CredentialsServiceTest {
     void generateUsername_concatenates() {
         when(userRepository.findByUsername("John.Doe")).thenReturn(Optional.empty());
 
-        assertThat(credentialsService.generateUsername(new BaseUserService.UserCreateRequest("John", "Doe"))).isEqualTo(
+        assertThat(credentialsService.generateUsername(new CreateUserRequest("John", "Doe"))).isEqualTo(
                 "John.Doe");
     }
 
@@ -54,7 +55,7 @@ class CredentialsServiceTest {
         when(userRepository.existsByUsername("John.Doe1")).thenReturn(true);
         when(userRepository.existsByUsername("John.Doe2")).thenReturn(false);
 
-        assertThat(credentialsService.generateUsername(new BaseUserService.UserCreateRequest("John", "Doe"))).isEqualTo(
+        assertThat(credentialsService.generateUsername(new CreateUserRequest("John", "Doe"))).isEqualTo(
                 "John.Doe2");
     }
 
@@ -71,7 +72,7 @@ class CredentialsServiceTest {
 
         stubNextBytes();
 
-        credentialsService.generateCredentials(new BaseUserService.UserCreateRequest("John", "Doe"));
+        credentialsService.generateCredentials(new CreateUserRequest("John", "Doe"));
 
         verify(passwordEncoder).encode(any());
     }

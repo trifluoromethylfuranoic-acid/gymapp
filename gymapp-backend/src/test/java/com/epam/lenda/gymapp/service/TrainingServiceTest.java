@@ -7,6 +7,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.epam.lenda.gymapp.Util;
+import com.epam.lenda.gymapp.dto.request.CreateTrainingRequest;
+import com.epam.lenda.gymapp.dto.request.SearchTrainingRequest;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Training;
 import com.epam.lenda.gymapp.repository.TraineeRepository;
@@ -47,8 +50,8 @@ class TrainingServiceTest {
 
     @Test
     void create_success() {
-        var trainee = Util.trainee(1, "trainee.username");
-        var trainer = Util.trainer(2, "trainer.username");
+        var trainee = Util.trainee("trainee.username");
+        var trainer = Util.trainer("trainer.username");
         var trainingType = Util.trainingType("Cardio");
         var datetime = new Date();
 
@@ -57,7 +60,7 @@ class TrainingServiceTest {
         when(trainingTypeRepository.findByNameIgnoreCase("Cardio")).thenReturn(Optional.of(trainingType));
         when(trainingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var created = trainingService.create(TrainingService.TrainingCreateRequest.builder().trainee(
+        var created = trainingService.create(CreateTrainingRequest.builder().trainee(
                 "trainee.username").trainer("trainer.username").name("New training").type("Cardio").datetime(
                         datetime).durationMinutes(60).build());
 
@@ -76,10 +79,10 @@ class TrainingServiceTest {
 
     @Test
     void create_throwsOnBlankName() {
-        var trainee = Util.trainee(1, "trainee");
-        var trainer = Util.trainer(1, "trainer");
+        var trainee = Util.trainee("trainee");
+        var trainer = Util.trainer("trainer");
 
-        assertThatThrownBy(() -> trainingService.create(TrainingService.TrainingCreateRequest.builder().trainee(
+        assertThatThrownBy(() -> trainingService.create(CreateTrainingRequest.builder().trainee(
                 "trainee").trainer("trainer").name("").type("Yoga").datetime(new Date()).durationMinutes(
                         1).build())).isInstanceOf(ConstraintViolationException.class);
         verify(trainingRepository, never()).save(any());
@@ -87,7 +90,7 @@ class TrainingServiceTest {
 
     @Test
     void findById_throwsWhenTrainingDoesNotExist() {
-        var id = UUID.randomUUID();
+        var id = UUID.fromString("9f9f97cd-1e21-4a79-93de-c82396f91527");
         when(trainingRepository.findById(id)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> trainingService.findById(id)).isInstanceOf(ResourceNotFoundException.class);
@@ -97,13 +100,13 @@ class TrainingServiceTest {
     void search_delegatesToRepositoryWithSpecification() {
         var from = new Date(1000);
         var to = new Date(2000);
-        var training = Training.builder().trainee(Util.trainee(1, "trainee.username")).trainer(Util.trainer(2,
+        var training = Training.builder().trainee(Util.trainee("trainee.username")).trainer(Util.trainer(
                 "trainer.username")).name("Training").type(Util.trainingType("Cardio")).datetime(from).durationMinutes(
                         30).build();
 
         when(trainingRepository.findAll(any(Specification.class))).thenReturn(List.of(training));
 
-        var result = trainingService.search(TrainingService.TrainingSearchRequest.builder().fromDateInclusive(
+        var result = trainingService.search(SearchTrainingRequest.builder().fromDateInclusive(
                 from).toDateInclusive(to).traineeUsername("trainee.username").trainerUsername(
                         "trainer.username").build());
 

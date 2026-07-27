@@ -2,17 +2,18 @@ package com.epam.lenda.gymapp.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
+import com.epam.lenda.gymapp.Util;
+import com.epam.lenda.gymapp.dto.request.CreateTraineeRequest;
+import com.epam.lenda.gymapp.dto.request.UpdateTraineeRequest;
+import com.epam.lenda.gymapp.exception.IllegalStateTransitionException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.TrainingAssignment;
@@ -63,12 +64,11 @@ class TraineeServiceTest {
         var dateOfBirth = LocalDate.of(1990, 1, 1);
         var address = "Address";
 
-        when(credentialsService.generateCredentials(any())).thenReturn(new CredentialsService.Credentials("Alice.Apple",
-                "password",
-                "encoded-password"));
+        when(credentialsService.generateCredentials(any())).thenReturn(
+                new CredentialsService.Credentials("Alice.Apple", "password", "encoded-password"));
 
-        traineeService.create(TraineeService.TraineeCreateRequest.builder().firstName("Alice").lastName(
-                "Apple").dateOfBirth(Date.valueOf(dateOfBirth)).address(address).build());
+        traineeService.create(CreateTraineeRequest.builder().firstName("Alice").lastName("Apple").dateOfBirth(
+                Date.valueOf(dateOfBirth)).address(address).build());
 
         var captor = ArgumentCaptor.forClass(Trainee.class);
         verify(traineeRepository).saveAndFlush(captor.capture());
@@ -79,17 +79,30 @@ class TraineeServiceTest {
     }
 
     @Test
-    void update_successWhenChangingUsername() {
-        var trainee = Util.trainee(1, "old.username");
-        var request = TraineeService.TraineeUpdateRequest.builder().username("new.username").firstName(
-                "NewFirst").lastName("NewLast").dateOfBirth(Date.valueOf(LocalDate.of(1995, 5, 14))).address(
-                        "New address").build();
+    void getTrainerList_success() {
+        var trainee = Util.trainee("trainee.username");
+        var trainers = List.of(Util.trainer("trainer.1"), Util.trainer("trainer.2"));
+        var assignments = trainers.stream().map(trainer -> new TrainingAssignment(trainee, trainer)).toList();
 
-        when(traineeRepository.findByUsername("old.username")).thenReturn(Optional.of(trainee));
+        when(traineeRepository.findByUsername(trainee.getUser().getUsername())).thenReturn(Optional.of(trainee));
+        when(trainingAssignmentRepository.findByTraineeId(trainee.getId())).thenReturn(assignments);
 
-        var newTrainee = traineeService.update("old.username", request);
+        var trainersReturned = traineeService.getTrainerList(trainee.getUser().getUsername());
 
-        assertThat(newTrainee.getUser().getUsername()).isEqualTo("new.username");
+        assertThat(trainersReturned).containsExactlyInAnyOrderElementsOf(trainers);
+    }
+
+    @Test
+    void update_success() {
+        var trainee = Util.trainee("trainee.username");
+        var request = UpdateTraineeRequest.builder().firstName("NewFirst").lastName("NewLast").dateOfBirth(
+                Date.valueOf(LocalDate.of(1995, 5, 14))).address("New address").isActive(true).build();
+
+        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
+
+        var newTrainee = traineeService.update("trainee.username", request);
+
+        assertThat(newTrainee.getUser().getUsername()).isEqualTo("trainee.username");
         assertThat(newTrainee.getUser().getFirstName()).isEqualTo("NewFirst");
         assertThat(newTrainee.getUser().getLastName()).isEqualTo("NewLast");
         assertThat(newTrainee.getDateOfBirth()).isEqualTo(Date.valueOf(LocalDate.of(1995, 5, 14)));
@@ -97,24 +110,10 @@ class TraineeServiceTest {
     }
 
     @Test
-    void update_successWhenNotChangingUsername() {
-        var trainee = Util.trainee(1, "trainee.username");
-        var request = TraineeService.TraineeUpdateRequest.builder().username("trainee.username").firstName(
-                "NewFirst").lastName("NewLast").dateOfBirth(Date.valueOf(LocalDate.of(1995, 5, 14))).address(
-                        "New address").build();
-
-        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
-
-        var newTrainee = assertDoesNotThrow(() -> traineeService.update("trainee.username", request));
-        assertThat(newTrainee.getUser().getUsername()).isEqualTo("trainee.username");
-    }
-
-    @Test
-    void update_throwsOnInvalidUsername() {
-        var trainee = Util.trainee(1, "trainee.username");
-        var request = TraineeService.TraineeUpdateRequest.builder().username("new/username").firstName(
-                "NewFirst").lastName("NewLast").dateOfBirth(Date.valueOf(LocalDate.of(1995, 5, 14))).address(
-                        "New address").build();
+    void update_throwsOnInvalidFirstName() {
+        var trainee = Util.trainee("trainee.username");
+        var request = UpdateTraineeRequest.builder().firstName("invalid/name").lastName("NewLast").dateOfBirth(
+                Date.valueOf(LocalDate.of(1995, 5, 14))).address("New address").build();
 
         when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
 
@@ -122,83 +121,47 @@ class TraineeServiceTest {
     }
 
     @Test
-    void update_throwsOnDuplicateUsername() {
-        var trainee = Util.trainee(1, "old.username");
-        var request = TraineeService.TraineeUpdateRequest.builder().username("existing.username").firstName(
-                "NewFirst").lastName("NewLast").dateOfBirth(Date.valueOf(LocalDate.of(1995, 5, 14))).address(
-                        "New address").build();
-
-        when(traineeRepository.findByUsername("old.username")).thenReturn(Optional.of(trainee));
-
-        when(credentialsService.isUsernameTaken(eq("existing.username"), any())).thenReturn(true);
-
-        assertThrows(DuplicateUsernameException.class, () -> traineeService.update("old.username", request));
-    }
-
-    @Test
-    void updatePassword_authenticatesAndChangesPassword() {
-        var trainee = Util.trainee(1, "trainee.username");
-        var request = new BaseUserService.PasswordChangeRequest("old-password", "new-password");
-
-        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
-        when(credentialsService.encodePassword("new-password")).thenReturn("encoded-new-password");
-
-        var updated = traineeService.updatePassword("trainee.username", request);
-
-        var authenticationCaptor = ArgumentCaptor.forClass(AuthService.AuthenticationRequest.class);
-        verify(authService).requireAuthentication(authenticationCaptor.capture());
-        assertThat(authenticationCaptor.getValue().getUsername()).isEqualTo("trainee.username");
-        assertThat(authenticationCaptor.getValue().getPassword()).isEqualTo("old-password");
-        assertThat(updated).isSameAs(trainee);
-        assertThat(trainee.getUser().getPassword()).isEqualTo("encoded-new-password");
-    }
-
-    @Test
-    void updatePassword_doesNotChangePasswordWhenAuthenticationFails() {
-        var request = new BaseUserService.PasswordChangeRequest("wrong-password", "new-password");
-
-        doThrow(new RuntimeException("bad credentials")).when(authService).requireAuthentication(any(
-                AuthService.AuthenticationRequest.class));
-
-        assertThatThrownBy(() -> traineeService.updatePassword("trainee.username", request)).isInstanceOf(
-                RuntimeException.class);
-        verify(traineeRepository, never()).findByUsername("trainee.username");
-        verify(credentialsService, never()).encodePassword(any());
-    }
-
-    @Test
-    void toggleActivation_flipsActiveFlag() {
-        var trainee = Util.trainee(1, "trainee.username");
+    void updateActiveStatus_success() {
+        var trainee = Util.trainee("trainee.username");
 
         when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
 
-        var updated = traineeService.toggleActivation("trainee.username");
+        var updated = traineeService.updateActiveStatus("trainee.username", false);
 
         assertThat(updated).isSameAs(trainee);
         assertThat(trainee.getUser().getIsActive()).isFalse();
     }
 
     @Test
+    void updateActiveStatus_throwsWhenSameStatus() {
+        var trainee = Util.trainee("trainee.username");
+
+        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
+
+        assertThrows(IllegalStateTransitionException.class,
+                () -> traineeService.updateActiveStatus("trainee.username", true));
+    }
+
+    @Test
     void toggleActivation_throwsWhenTraineeDoesNotExist() {
         when(traineeRepository.findByUsername("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> traineeService.toggleActivation("missing"))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> traineeService.updateActiveStatus("missing", false)).isInstanceOf(
+                ResourceNotFoundException.class);
     }
 
     @Test
     void updateTrainerList_addsAndRemovesAssignments() {
-        var trainee = Util.trainee(1, "trainee.username");
-        var keptTrainer = Util.trainer(2, "kept.trainer");
-        var addedTrainer = Util.trainer(3, "added.trainer");
-        var removedTrainer = Util.trainer(4, "removed.trainer");
+        var trainee = Util.trainee("trainee.username");
+        var keptTrainer = Util.trainer("kept.trainer");
+        var addedTrainer = Util.trainer("added.trainer");
+        var removedTrainer = Util.trainer("removed.trainer");
 
         when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
-        when(trainerRepository.findByUsernames(List.of("kept.trainer", "added.trainer"))).thenReturn(List.of(
-                keptTrainer, addedTrainer));
-        when(trainingAssignmentRepository.findByTraineeId(trainee.getId())).thenReturn(List.of(new TrainingAssignment(
-                trainee, keptTrainer),
-                new TrainingAssignment(trainee, removedTrainer)));
+        when(trainerRepository.findByUsernames(List.of("kept.trainer", "added.trainer"))).thenReturn(
+                List.of(keptTrainer, addedTrainer));
+        when(trainingAssignmentRepository.findByTraineeId(trainee.getId())).thenReturn(
+                List.of(new TrainingAssignment(trainee, keptTrainer), new TrainingAssignment(trainee, removedTrainer)));
 
         var trainers = traineeService.updateTrainerList("trainee.username", List.of("kept.trainer", "added.trainer"));
 
@@ -215,14 +178,15 @@ class TraineeServiceTest {
 
     @Test
     void updateTrainerList_throwsWhenAnyTrainerDoesNotExist() {
-        var trainee = Util.trainee(1, "trainee.username");
+        var trainee = Util.trainee("trainee.username");
 
         when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
-        when(trainerRepository.findByUsernames(List.of("existing.trainer", "missing.trainer"))).thenReturn(List.of(
-                Util.trainer(2, "existing.trainer")));
+        when(trainerRepository.findByUsernames(List.of("existing.trainer", "missing.trainer"))).thenReturn(
+                List.of(Util.trainer("existing.trainer")));
 
-        assertThatThrownBy(() -> traineeService.updateTrainerList("trainee.username",
-                List.of("existing.trainer", "missing.trainer"))).isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> traineeService.updateTrainerList("trainee.username", List.of("existing.trainer",
+                "missing.trainer"))).isInstanceOf(
+                        ResourceNotFoundException.class);
         verify(trainingAssignmentRepository, never()).findByTraineeId(any());
     }
 
@@ -230,13 +194,13 @@ class TraineeServiceTest {
     void findByUsername_throwsWhenTraineeDoesNotExist() {
         when(traineeRepository.findByUsername("missing")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> traineeService.findByUsername("missing"))
-                .isInstanceOf(ResourceNotFoundException.class);
+        assertThatThrownBy(() -> traineeService.findByUsername("missing")).isInstanceOf(
+                ResourceNotFoundException.class);
     }
 
     @Test
-    void delete_clearsReferencesAndDeletesEntity() {
-        var trainee = Util.trainee(1, "trainee.username");
+    void delete_deletesEntityAndCascades() {
+        var trainee = Util.trainee("trainee.username");
 
         when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
 
@@ -244,12 +208,29 @@ class TraineeServiceTest {
 
         verify(traineeRepository).delete(trainee);
         verify(trainingRepository).deleteByTraineeId(trainee.getId());
+        verify(trainingAssignmentRepository).deleteByTraineeId(trainee.getId());
     }
 
     @Test
-    void delete_ignoresMissingTrainee() {
+    void delete_throwsOnMissingTrainee() {
         when(traineeRepository.findByUsername("missing")).thenReturn(Optional.empty());
 
-        assertDoesNotThrow(() -> traineeService.delete("missing"));
+        assertThrows(ResourceNotFoundException.class, () -> traineeService.delete("missing"));
+    }
+
+    @Test
+    void findActiveTrainersNotAssignedToTrainee_returnsRepositoryResult() {
+        var trainer1 = Util.trainer("trainer.one");
+        var trainer2 = Util.trainer("trainer.two");
+        var trainee = Util.trainee("trainee.username");
+
+        when(traineeRepository.findByUsername("trainee.username")).thenReturn(Optional.of(trainee));
+        when(trainingAssignmentRepository.findActiveTrainersNotAssignedToTrainee("trainee.username")).thenReturn(
+                List.of(trainer1, trainer2));
+
+        var trainers = traineeService.findActiveTrainersNotAssignedToTrainee("trainee.username");
+
+        assertThat(trainers).containsExactly(trainer1, trainer2);
+        verify(trainingAssignmentRepository).findActiveTrainersNotAssignedToTrainee("trainee.username");
     }
 }
