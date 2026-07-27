@@ -1,24 +1,20 @@
 package com.epam.lenda.gymapp.service;
 
+import com.epam.lenda.gymapp.dto.request.AuthenticationRequest;
+import com.epam.lenda.gymapp.dto.request.ChangePasswordRequest;
 import com.epam.lenda.gymapp.model.User;
+import jakarta.annotation.Nonnull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.Optional;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.extern.jackson.Jacksonized;
+import org.springframework.validation.annotation.Validated;
 
+@Validated
 public interface AuthService {
     Optional<User> authenticate(AuthenticationRequest authenticationRequest);
 
     User requireAuthentication(AuthenticationRequest authenticationRequest);
 
-    @Getter
-    @AllArgsConstructor
-    @Builder
-    @Jacksonized
-    class AuthenticationRequest {
-        private String username;
-
-        private String password;
-    }
+    @Nonnull
+    User updatePassword(@Nonnull String username, @NotNull @Valid ChangePasswordRequest request);
 }

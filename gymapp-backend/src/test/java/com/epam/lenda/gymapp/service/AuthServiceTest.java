@@ -3,6 +3,7 @@ package com.epam.lenda.gymapp.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.epam.lenda.gymapp.dto.request.AuthenticationRequest;
 import com.epam.lenda.gymapp.model.User;
 import com.epam.lenda.gymapp.repository.UserRepository;
 import com.epam.lenda.gymapp.service.impl.AuthServiceImpl;
@@ -35,7 +36,7 @@ class AuthServiceTest {
         when(userRepository.findByUsername("trainee.username")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("raw-password", "encoded-password")).thenReturn(true);
 
-        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("trainee.username",
+        var authenticated = authService.authenticate(new AuthenticationRequest("trainee.username",
                 "raw-password"));
 
         assertThat(authenticated).containsSame(user);
@@ -48,7 +49,7 @@ class AuthServiceTest {
         when(userRepository.findByUsername("trainee.username")).thenReturn(Optional.of(user));
         when(passwordEncoder.matches("wrong-password", "encoded-password")).thenReturn(false);
 
-        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("trainee.username",
+        var authenticated = authService.authenticate(new AuthenticationRequest("trainee.username",
                 "wrong-password"));
 
         assertThat(authenticated).isEmpty();
@@ -58,8 +59,8 @@ class AuthServiceTest {
     void authenticate_returnsEmptyWhenUserDoesNotExist() {
         when(userRepository.findByUsername("missing.username")).thenReturn(Optional.empty());
 
-        var authenticated = authService.authenticate(new AuthService.AuthenticationRequest("missing.username",
-                                                                                          "raw-password"));
+        var authenticated = authService.authenticate(new AuthenticationRequest("missing.username",
+                                                                               "raw-password"));
 
         assertThat(authenticated).isEmpty();
     }

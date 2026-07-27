@@ -19,17 +19,10 @@ public interface TrainingAssignmentRepository extends JpaRepository<TrainingAssi
                     SELECT 1 FROM TrainingAssignment ta
                         WHERE ta.trainee.user.username = :traineeUsername
                             AND ta.trainer.id = trainer.id
-                )
+                ) AND trainer.user.isActive
             """)
     @Nonnull
-    List<Trainer> findTrainersNotAssignedToTrainee(@Nonnull String traineeUsername);
-
-    @Query("""
-            SELECT ta FROM TrainingAssignment ta
-                WHERE ta.trainee.user.username = :traineeUsername
-            """)
-    @Nonnull
-    List<TrainingAssignment> findByTraineeUsername(@Nonnull String traineeUsername);
+    List<Trainer> findActiveTrainersNotAssignedToTrainee(@Nonnull String traineeUsername);
 
     @Query("""
             SELECT ta FROM TrainingAssignment ta
@@ -37,6 +30,20 @@ public interface TrainingAssignmentRepository extends JpaRepository<TrainingAssi
             """)
     @Nonnull
     List<TrainingAssignment> findByTraineeId(@Nonnull UUID traineeId);
+
+    @Query("""
+            SELECT ta FROM TrainingAssignment ta
+                WHERE ta.trainerId = :trainerId
+            """)
+    @Nonnull
+    List<TrainingAssignment> findByTrainerId(@Nonnull UUID trainerId);
+
+    @Query("""
+            DELETE FROM TrainingAssignment ta
+                WHERE ta.traineeId = :traineeId
+            """)
+    @Modifying
+    void deleteByTraineeId(@Nonnull UUID traineeId);
 
     @Query("""
             DELETE FROM TrainingAssignment ta

@@ -1,7 +1,7 @@
 package com.epam.lenda.gymapp.service.impl;
 
+import com.epam.lenda.gymapp.dto.request.CreateUserRequest;
 import com.epam.lenda.gymapp.repository.UserRepository;
-import com.epam.lenda.gymapp.service.BaseUserService;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import jakarta.annotation.Nonnull;
 import java.security.SecureRandom;
@@ -27,7 +27,7 @@ public class CredentialsServiceImpl implements CredentialsService {
     private int defaultPasswordLength;
 
     @Override
-    public @Nonnull String generateUsername(@Nonnull BaseUserService.UserCreateRequest request) {
+    public @Nonnull String generateUsername(@Nonnull CreateUserRequest request) {
         var initial = request.getFirstName() + "." + request.getLastName();
         var candidate = initial;
         var counter = 1;
@@ -54,7 +54,7 @@ public class CredentialsServiceImpl implements CredentialsService {
     }
 
     @Override
-    public @Nonnull Credentials generateCredentials(@Nonnull BaseUserService.UserCreateRequest request) {
+    public @Nonnull Credentials generateCredentials(@Nonnull CreateUserRequest request) {
         var username = generateUsername(request);
         var password = generatePassword();
         var passwordHash = encodePassword(password);

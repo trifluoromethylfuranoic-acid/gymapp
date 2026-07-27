@@ -88,9 +88,8 @@ class RepositoryTest {
         var assignment = entityManager.persistAndFlush(new TrainingAssignment(trainee, assignedTrainer));
         entityManager.clear();
 
-        assertThat(trainingAssignmentRepository.findByTraineeUsername("tina.trainee")).containsExactly(assignment);
         assertThat(trainingAssignmentRepository.findByTraineeId(trainee.getId())).containsExactly(assignment);
-        assertThat(trainingAssignmentRepository.findTrainersNotAssignedToTrainee("tina.trainee")).containsExactly(
+        assertThat(trainingAssignmentRepository.findActiveTrainersNotAssignedToTrainee("tina.trainee")).containsExactly(
                 unassignedTrainer);
     }
 

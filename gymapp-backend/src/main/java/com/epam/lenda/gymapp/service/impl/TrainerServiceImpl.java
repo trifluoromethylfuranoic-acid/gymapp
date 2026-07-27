@@ -1,10 +1,13 @@
 package com.epam.lenda.gymapp.service.impl;
 
+import com.epam.lenda.gymapp.dto.request.CreateTrainerRequest;
+import com.epam.lenda.gymapp.dto.request.UpdateTrainerRequest;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
+import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.Trainer;
+import com.epam.lenda.gymapp.model.TrainingAssignment;
 import com.epam.lenda.gymapp.repository.*;
-import com.epam.lenda.gymapp.service.AuthService;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TrainerService;
 import com.epam.lenda.gymapp.util.Pair;
@@ -20,21 +23,21 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Slf4j
 @RequiredArgsConstructor
-public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, TrainerService.TrainerCreateRequest, TrainerService.TrainerUpdateRequest> implements TrainerService {
+public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, CreateTrainerRequest, UpdateTrainerRequest> implements TrainerService {
     private final TrainerRepository trainerRepository;
     private final CredentialsService credentialsService;
     private final TrainingTypeRepository trainingTypeRepository;
-    private final AuthService authService;
     private final TrainingAssignmentRepository trainingAssignmentRepository;
 
     @Override
     @Transactional
-    public @Nonnull Pair<Trainer, String> create(@Nonnull TrainerCreateRequest request) {
+    public @Nonnull Pair<Trainer, String> create(@Nonnull CreateTrainerRequest request) {
         final var pair = createUser(request);
         final var user = pair.first();
         final var password = pair.second();
-        final var specialization = trainingTypeRepository.findByNameIgnoreCase(
-                request.getSpecialization().trim()).orElseThrow(ResourceNotFoundException::new);
+        final var trainingTypeName = request.getSpecialization().trim();
+        final var specialization = trainingTypeRepository.findByNameIgnoreCase(trainingTypeName).orElseThrow(
+                () -> new ResourceNotFoundException("training type", trainingTypeName));
 
         final var trainer = new Trainer(user, specialization);
 
@@ -49,25 +52,19 @@ public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, TrainerServ
 
     @Override
     @Transactional
-    public @Nonnull Trainer update(@Nonnull String username, @Nonnull TrainerUpdateRequest request) {
+    public @Nonnull Trainer update(@Nonnull String username, @Nonnull UpdateTrainerRequest request) {
         final var trainer = findByUsername(username);
-        final var specialization = trainingTypeRepository.findByNameIgnoreCase(
-                request.getSpecialization().trim()).orElseThrow(ResourceNotFoundException::new);
-        updateUser(trainer.getUser(), request);
-        trainer.setSpecialization(specialization);
 
-        try {
-            trainerRepository.flush();
-        } catch (DataIntegrityViolationException e) {
-            throw new DuplicateUsernameException();
-        }
+        updateUser(trainer.getUser(), request);
 
         return trainer;
     }
 
     @Override
-    public @NonNull List<Trainer> findNotAssignedToTrainee(@NonNull String traineeUsername) {
-        return trainingAssignmentRepository.findTrainersNotAssignedToTrainee(traineeUsername);
+    public @NonNull List<Trainee> getTraineeList(@NonNull String username) {
+        final var trainer = findByUsername(username);
+        return trainingAssignmentRepository.findByTrainerId(trainer.getId()).stream().map(
+                TrainingAssignment::getTrainee).toList();
     }
 
     @Override
@@ -76,12 +73,12 @@ public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, TrainerServ
     }
 
     @Override
-    protected @Nonnull CredentialsService getCredentialsService() {
-        return credentialsService;
+    protected @NonNull String getResourceName() {
+        return "trainer";
     }
 
     @Override
-    protected @NonNull AuthService getAuthService() {
-        return authService;
+    protected @Nonnull CredentialsService getCredentialsService() {
+        return credentialsService;
     }
 }
