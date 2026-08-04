@@ -11,13 +11,13 @@ import com.epam.lenda.gymapp.repository.*;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TraineeService;
 import com.epam.lenda.gymapp.util.Pair;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -26,13 +26,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, CreateTraineeRequest, UpdateTraineeRequest> implements TraineeService {
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
     private final TrainingAssignmentRepository trainingAssignmentRepository;
     private final CredentialsService credentialsService;
     private final TrainingRepository trainingRepository;
+
+    public TraineeServiceImpl(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
+                              TrainingAssignmentRepository trainingAssignmentRepository,
+                              CredentialsService credentialsService, TrainingRepository trainingRepository,
+                              MeterRegistry meterRegistry) {
+        super(meterRegistry);
+        this.traineeRepository = traineeRepository;
+        this.trainerRepository = trainerRepository;
+        this.trainingAssignmentRepository = trainingAssignmentRepository;
+        this.credentialsService = credentialsService;
+        this.trainingRepository = trainingRepository;
+    }
 
     @Override
     @Transactional
