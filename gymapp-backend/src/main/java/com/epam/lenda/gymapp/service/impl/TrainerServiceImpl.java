@@ -11,9 +11,9 @@ import com.epam.lenda.gymapp.repository.*;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.service.TrainerService;
 import com.epam.lenda.gymapp.util.Pair;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -22,12 +22,22 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Slf4j
-@RequiredArgsConstructor
 public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, CreateTrainerRequest, UpdateTrainerRequest> implements TrainerService {
     private final TrainerRepository trainerRepository;
     private final CredentialsService credentialsService;
     private final TrainingTypeRepository trainingTypeRepository;
     private final TrainingAssignmentRepository trainingAssignmentRepository;
+
+    public TrainerServiceImpl(TrainerRepository trainerRepository, CredentialsService credentialsService,
+                              TrainingTypeRepository trainingTypeRepository,
+                              TrainingAssignmentRepository trainingAssignmentRepository,
+                              MeterRegistry meterRegistry) {
+        super(meterRegistry);
+        this.trainerRepository = trainerRepository;
+        this.credentialsService = credentialsService;
+        this.trainingTypeRepository = trainingTypeRepository;
+        this.trainingAssignmentRepository = trainingAssignmentRepository;
+    }
 
     @Override
     @Transactional
@@ -37,7 +47,8 @@ public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, CreateTrain
         final var password = pair.second();
         final var trainingTypeName = request.getSpecialization().trim();
         final var specialization = trainingTypeRepository.findByNameIgnoreCase(trainingTypeName).orElseThrow(
-                () -> new ResourceNotFoundException("training type", trainingTypeName));
+                () -> new ResourceNotFoundException("training type",
+                        trainingTypeName));
 
         final var trainer = new Trainer(user, specialization);
 

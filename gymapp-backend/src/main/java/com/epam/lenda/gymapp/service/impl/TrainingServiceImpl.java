@@ -9,22 +9,33 @@ import com.epam.lenda.gymapp.repository.TrainerRepository;
 import com.epam.lenda.gymapp.repository.TrainingRepository;
 import com.epam.lenda.gymapp.repository.TrainingTypeRepository;
 import com.epam.lenda.gymapp.service.TrainingService;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.data.repository.ListCrudRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class TrainingServiceImpl extends BaseServiceImpl<Training, UUID> implements TrainingService {
     private final TrainingRepository trainingRepository;
     private final TraineeRepository traineeRepository;
     private final TrainerRepository trainerRepository;
     private final TrainingTypeRepository trainingTypeRepository;
+    private final Counter trainingsCreatedCounter;
+
+    public TrainingServiceImpl(TrainingRepository trainingRepository, TraineeRepository traineeRepository,
+                               TrainerRepository trainerRepository, TrainingTypeRepository trainingTypeRepository,
+                               MeterRegistry meterRegistry) {
+        this.trainingRepository = trainingRepository;
+        this.traineeRepository = traineeRepository;
+        this.trainerRepository = trainerRepository;
+        this.trainingTypeRepository = trainingTypeRepository;
+        this.trainingsCreatedCounter = meterRegistry.counter("trainings.created");
+    }
 
     @Override
     @Transactional
@@ -40,6 +51,8 @@ public class TrainingServiceImpl extends BaseServiceImpl<Training, UUID> impleme
         var training = Training.builder().trainee(trainee).trainer(trainer).name(request.getName()).type(
                 trainingType).datetime(request.getDatetime()).durationMinutes(
                         request.getDurationMinutes()).build();
+
+        trainingsCreatedCounter.increment();
 
         return trainingRepository.save(training);
     }

@@ -4,7 +4,7 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 *.env
-application-local.yaml
+application-secrets.yaml
 
 ### STS ###
 .apt_generated

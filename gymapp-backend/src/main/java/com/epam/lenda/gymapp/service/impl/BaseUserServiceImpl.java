@@ -10,11 +10,18 @@ import com.epam.lenda.gymapp.repository.BaseUserRepository;
 import com.epam.lenda.gymapp.service.BaseUserService;
 import com.epam.lenda.gymapp.service.CredentialsService;
 import com.epam.lenda.gymapp.util.Pair;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Nonnull;
 import java.util.UUID;
 import org.springframework.transaction.annotation.Transactional;
 
 public abstract class BaseUserServiceImpl<T extends IsUser, C extends CreateUserRequest, U extends UpdateUserRequest> extends BaseServiceImpl<T, UUID> implements BaseUserService<T, C, U> {
+    private final Counter signupsCounter;
+
+    public BaseUserServiceImpl(MeterRegistry meterRegistry) {
+        this.signupsCounter = meterRegistry.counter("signups.successful");
+    }
 
     @Transactional
     public @Nonnull T findByUsername(@Nonnull String username) {
@@ -42,6 +49,7 @@ public abstract class BaseUserServiceImpl<T extends IsUser, C extends CreateUser
         final var credentials = getCredentialsService().generateCredentials(request);
         final var user = User.builder().firstName(request.getFirstName()).lastName(request.getLastName()).username(
                 credentials.username()).password(credentials.passwordHash()).isActive(true).build();
+        signupsCounter.increment();
         return Pair.of(user, credentials.password());
     }
 
