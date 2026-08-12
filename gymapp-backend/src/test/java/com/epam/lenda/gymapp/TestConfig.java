@@ -1,4 +1,4 @@
-package com.epam.lenda.gymapp.service;
+package com.epam.lenda.gymapp;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -17,4 +17,5 @@ public class TestConfig {
     public MeterRegistry meterRegistry() {
         return new SimpleMeterRegistry();
     }
+
 }

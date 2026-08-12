@@ -4,6 +4,7 @@ import com.epam.lenda.gymapp.dto.request.CreateTrainerRequest;
 import com.epam.lenda.gymapp.dto.request.UpdateTrainerRequest;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
+import com.epam.lenda.gymapp.model.Role;
 import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.Trainer;
 import com.epam.lenda.gymapp.model.TrainingAssignment;
@@ -42,7 +43,7 @@ public class TrainerServiceImpl extends BaseUserServiceImpl<Trainer, CreateTrain
     @Override
     @Transactional
     public @Nonnull Pair<Trainer, String> create(@Nonnull CreateTrainerRequest request) {
-        final var pair = createUser(request);
+        final var pair = createUser(request, Role.ROLE_TRAINER);
         final var user = pair.first();
         final var password = pair.second();
         final var trainingTypeName = request.getSpecialization().trim();

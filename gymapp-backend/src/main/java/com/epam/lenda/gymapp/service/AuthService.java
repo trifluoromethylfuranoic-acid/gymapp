@@ -1,5 +1,6 @@
 package com.epam.lenda.gymapp.service;
 
+import com.epam.lenda.gymapp.dto.GymUserDetails;
 import com.epam.lenda.gymapp.dto.request.AuthenticationRequest;
 import com.epam.lenda.gymapp.dto.request.ChangePasswordRequest;
 import com.epam.lenda.gymapp.model.User;
@@ -11,9 +12,9 @@ import org.springframework.validation.annotation.Validated;
 
 @Validated
 public interface AuthService {
-    Optional<User> authenticate(AuthenticationRequest authenticationRequest);
+    Optional<GymUserDetails> authenticate(AuthenticationRequest authenticationRequest);
 
-    User requireAuthentication(AuthenticationRequest authenticationRequest);
+    GymUserDetails requireAuthentication(AuthenticationRequest authenticationRequest);
 
     @Nonnull
     User updatePassword(@Nonnull String username, @NotNull @Valid ChangePasswordRequest request);

@@ -7,7 +7,9 @@ import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.exception.WrongCredentialsException;
 import jakarta.annotation.Nonnull;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -16,17 +18,31 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
 
 @RestControllerAdvice(basePackages = "com.epam.lenda.gymapp.controller.rest")
 public class ExceptionHandlingAdvice extends ResponseEntityExceptionHandler {
+    private final int blockDurationMinutes;
+
+    public ExceptionHandlingAdvice(
+            @Value("${application.security.userBlock.durationSeconds}") int blockDurationSeconds
+    ) {
+        blockDurationMinutes = blockDurationSeconds / 60;
+    }
+
     @Override
-    protected ResponseEntity<Object> handleMethodArgumentNotValid(@Nonnull MethodArgumentNotValidException ex,
-                                                                  @Nonnull HttpHeaders headers,
-                                                                  @Nonnull HttpStatusCode status,
-                                                                  @Nonnull WebRequest request) {
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            @Nonnull MethodArgumentNotValidException ex,
+            @Nonnull HttpHeaders headers,
+            @Nonnull HttpStatusCode status,
+            @Nonnull WebRequest request) {
 
         final var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "One or more fields are invalid");
         problem.setTitle("Validation Failed");
-        problem.setProperty("errors", ex.getBindingResult().getFieldErrors().stream().map(
-                error -> new ValidationErrorResponse(error.getField(), String.valueOf(error.getRejectedValue()),
-                        error.getDefaultMessage())).toList());
+        problem.setProperty("errors", ex
+                .getBindingResult()
+                .getFieldErrors()
+                .stream()
+                .map(error ->
+                             new ValidationErrorResponse(error.getField(), String.valueOf(error.getRejectedValue()),
+                                                         error.getDefaultMessage()))
+                .toList());
 
         return ResponseEntity.status(status).headers(headers).body(problem);
     }
@@ -35,10 +51,13 @@ public class ExceptionHandlingAdvice extends ResponseEntityExceptionHandler {
     public ProblemDetail handleConstraintViolation(@Nonnull ConstraintViolationException ex) {
         final var problem = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "One or more fields are invalid");
         problem.setTitle("Validation Failed");
-        problem.setProperty("errors", ex.getConstraintViolations().stream().map(
-                error -> new ValidationErrorResponse(error.getPropertyPath().toString(),
-                        String.valueOf(error.getInvalidValue()),
-                        error.getMessage())).toList());
+        problem.setProperty("errors", ex
+                .getConstraintViolations()
+                .stream()
+                .map(error ->
+                             new ValidationErrorResponse(error.getPropertyPath().toString(),
+                                                         String.valueOf(error.getInvalidValue()),
+                                                         error.getMessage())).toList());
         return problem;
     }
 
@@ -73,6 +92,16 @@ public class ExceptionHandlingAdvice extends ResponseEntityExceptionHandler {
     public ProblemDetail handleIllegalStateTransition(@Nonnull IllegalStateTransitionException ex) {
         final var problem = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
         problem.setTitle("Illegal action");
+        return problem;
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ProblemDetail handleIllegalStateTransition(@Nonnull LockedException ex) {
+        final var problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.LOCKED,
+                "Account locked due to too many login attempts. Try again in %s minutes".formatted(
+                        blockDurationMinutes));
+        problem.setTitle("Account locked");
         return problem;
     }
 }

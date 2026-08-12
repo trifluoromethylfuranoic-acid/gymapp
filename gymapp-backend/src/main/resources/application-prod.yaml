@@ -6,9 +6,6 @@ logging:
     com.epam.lenda: info
 
 spring:
-  profiles:
-    active: secrets
-
   datasource:
     url: jdbc:postgresql://${application.db.host}:${application.db.port}/${application.db.name}
     driver-class-name: org.postgresql.Driver

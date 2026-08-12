@@ -10,6 +10,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.epam.lenda.gymapp.TestConfig;
 import com.epam.lenda.gymapp.Util;
 import com.epam.lenda.gymapp.dto.request.CreateTraineeRequest;
 import com.epam.lenda.gymapp.dto.request.UpdateTraineeRequest;
@@ -17,10 +18,7 @@ import com.epam.lenda.gymapp.exception.IllegalStateTransitionException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.TrainingAssignment;
-import com.epam.lenda.gymapp.repository.TraineeRepository;
-import com.epam.lenda.gymapp.repository.TrainerRepository;
-import com.epam.lenda.gymapp.repository.TrainingAssignmentRepository;
-import com.epam.lenda.gymapp.repository.TrainingRepository;
+import com.epam.lenda.gymapp.repository.*;
 import com.epam.lenda.gymapp.service.impl.TraineeServiceImpl;
 import jakarta.validation.ConstraintViolationException;
 import java.sql.Date;
@@ -55,6 +53,8 @@ class TraineeServiceTest {
     private CredentialsService credentialsService;
     @MockitoBean
     private AuthService authService;
+    @MockitoBean
+    private RefreshTokenRepository refreshTokenRepository;
 
     @Autowired
     private TraineeService traineeService;
@@ -209,6 +209,7 @@ class TraineeServiceTest {
         verify(traineeRepository).delete(trainee);
         verify(trainingRepository).deleteByTraineeId(trainee.getId());
         verify(trainingAssignmentRepository).deleteByTraineeId(trainee.getId());
+        verify(refreshTokenRepository).deleteByUsername(trainee.getUser().getUsername());
     }
 
     @Test

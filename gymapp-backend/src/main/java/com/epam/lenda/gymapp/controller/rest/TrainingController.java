@@ -1,5 +1,6 @@
 package com.epam.lenda.gymapp.controller.rest;
 
+import com.epam.lenda.gymapp.dto.GymUserDetails;
 import com.epam.lenda.gymapp.dto.request.CreateTrainingRequest;
 import com.epam.lenda.gymapp.dto.request.SearchTrainingRequest;
 import com.epam.lenda.gymapp.dto.response.TrainingResponse;
@@ -11,9 +12,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Nonnull;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -25,20 +30,38 @@ public class TrainingController {
     private final TrainingMapper trainingMapper;
 
     @Operation(summary = "Search trainings")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Success"), @ApiResponse(responseCode = "400", description = "Invalid format or invalid values", content = @Content),
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Success"),
+            @ApiResponse(responseCode = "400", description = "Invalid format or invalid values", content = @Content),
     })
     @GetMapping("")
     @Nonnull
-    public List<TrainingResponse> getTrainings(@ModelAttribute SearchTrainingRequest request) {
+    @PreAuthorize("""
+            #user != null && (hasRole('ADMIN')
+              || #request?.traineeUsername == #user.username
+              || #request?.trainerUsername == #user.username)
+            """)
+    public List<TrainingResponse> getTrainings(@ModelAttribute SearchTrainingRequest request,
+                                               @AuthenticationPrincipal GymUserDetails user) {
         return trainingService.search(request).stream().map(trainingMapper::toDto).toList();
     }
 
     @Operation(summary = "Create new training")
-    @ApiResponses({@ApiResponse(responseCode = "201", description = "Success"), @ApiResponse(responseCode = "404", description = "Trainer, trainee or training type not found", content = @Content), @ApiResponse(responseCode = "400", description = "Invalid format or invalid values", content = @Content),
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "Success"),
+            @ApiResponse(responseCode = "404",
+                    description = "Trainer, trainee or training type not found", content = @Content),
+            @ApiResponse(responseCode = "400", description = "Invalid format or invalid values", content = @Content),
     })
     @PostMapping("")
     @ResponseStatus(HttpStatus.CREATED)
-    public void createTraining(@RequestBody CreateTrainingRequest request) {
+    @PreAuthorize("""
+            #user != null && (hasRole('ADMIN')
+              || #request?.trainee == #user.username
+              || #request?.trainer == #user.username)
+            """)
+    public void createTraining(@RequestBody @NotNull @Valid CreateTrainingRequest request,
+                               @AuthenticationPrincipal GymUserDetails user) {
         trainingService.create(request);
     }
 }

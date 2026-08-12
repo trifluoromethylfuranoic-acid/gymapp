@@ -5,6 +5,7 @@ import com.epam.lenda.gymapp.dto.request.UpdateUserRequest;
 import com.epam.lenda.gymapp.exception.IllegalStateTransitionException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.model.IsUser;
+import com.epam.lenda.gymapp.model.Role;
 import com.epam.lenda.gymapp.model.User;
 import com.epam.lenda.gymapp.repository.BaseUserRepository;
 import com.epam.lenda.gymapp.service.BaseUserService;
@@ -45,10 +46,19 @@ public abstract class BaseUserServiceImpl<T extends IsUser, C extends CreateUser
         return entity;
     }
 
-    protected @Nonnull Pair<User, String> createUser(@Nonnull C request) {
+    protected @Nonnull Pair<User, String> createUser(@Nonnull C request, @Nonnull Role role) {
         final var credentials = getCredentialsService().generateCredentials(request);
-        final var user = User.builder().firstName(request.getFirstName()).lastName(request.getLastName()).username(
-                credentials.username()).password(credentials.passwordHash()).isActive(true).build();
+        final var user = User
+                .builder()
+                .firstName(request.getFirstName())
+                .lastName(request.getLastName())
+                .username(credentials.username())
+                .password(credentials.passwordHash())
+                .isActive(true)
+                .role(role)
+                .failedLoginAttempts(0)
+                .build();
+
         signupsCounter.increment();
         return Pair.of(user, credentials.password());
     }

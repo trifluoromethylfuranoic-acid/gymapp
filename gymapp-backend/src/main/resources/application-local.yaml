@@ -41,3 +41,8 @@ management:
   health:
     key:
       enabled: db,diskspace
+
+application:
+  security:
+    accessToken:
+      lifetimeSeconds: 60000

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
-@Profile("dev")
+@Profile({"dev", "local"})
 public class DummyController {
     @GetMapping("/crash")
     public void crash() {

@@ -2,12 +2,7 @@ package com.epam.lenda.gymapp.repository;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.epam.lenda.gymapp.model.Trainee;
-import com.epam.lenda.gymapp.model.Trainer;
-import com.epam.lenda.gymapp.model.Training;
-import com.epam.lenda.gymapp.model.TrainingAssignment;
-import com.epam.lenda.gymapp.model.TrainingType;
-import com.epam.lenda.gymapp.model.User;
+import com.epam.lenda.gymapp.model.*;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.List;
@@ -128,20 +123,35 @@ class RepositoryTest {
 
     private static User user(String firstName, String lastName, String username) {
         return User.builder().firstName(firstName).lastName(lastName).username(username).password("password").isActive(
-                true).build();
+                true).failedLoginAttempts(0).role(Role.ROLE_ADMIN).build();
     }
 
     private static Trainee trainee(String firstName, String lastName, String username) {
-        return Trainee.builder().user(user(firstName, lastName, username)).dateOfBirth(Date.valueOf(LocalDate.of(1990,
-                1, 1))).address("Address").build();
+        return Trainee
+                .builder()
+                .user(user(firstName, lastName, username))
+                .dateOfBirth(Date.valueOf(LocalDate.of(1990, 1, 1)))
+                .address("Address")
+                .build();
     }
 
     private static Trainer trainer(String firstName, String lastName, String username, TrainingType specialization) {
-        return Trainer.builder().user(user(firstName, lastName, username)).specialization(specialization).build();
+        return Trainer
+                .builder()
+                .user(user(firstName, lastName, username))
+                .specialization(specialization)
+                .build();
     }
 
     private static Training training(Trainee trainee, Trainer trainer, TrainingType type, String name) {
-        return Training.builder().trainee(trainee).trainer(trainer).name(name).type(type).datetime(Date.valueOf(
-                LocalDate.of(2026, 7, 14))).durationMinutes(60).build();
+        return Training
+                .builder()
+                .trainee(trainee)
+                .trainer(trainer)
+                .name(name)
+                .type(type)
+                .datetime(Date.valueOf(LocalDate.of(2026, 7, 14)))
+                .durationMinutes(60)
+                .build();
     }
 }
