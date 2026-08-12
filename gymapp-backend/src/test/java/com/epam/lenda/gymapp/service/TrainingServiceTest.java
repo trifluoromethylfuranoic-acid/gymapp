@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.epam.lenda.gymapp.TestConfig;
 import com.epam.lenda.gymapp.Util;
 import com.epam.lenda.gymapp.dto.request.CreateTrainingRequest;
 import com.epam.lenda.gymapp.dto.request.SearchTrainingRequest;
@@ -82,9 +83,18 @@ class TrainingServiceTest {
         var trainee = Util.trainee("trainee");
         var trainer = Util.trainer("trainer");
 
-        assertThatThrownBy(() -> trainingService.create(CreateTrainingRequest.builder().trainee(
-                "trainee").trainer("trainer").name("").type("Yoga").datetime(new Date()).durationMinutes(
-                        1).build())).isInstanceOf(ConstraintViolationException.class);
+        assertThatThrownBy(() -> trainingService.create(
+                CreateTrainingRequest
+                        .builder()
+                        .trainee("trainee")
+                        .trainer("trainer")
+                        .name("")
+                        .type("Yoga")
+                        .datetime(new Date())
+                        .durationMinutes(1)
+                        .build()))
+                .isInstanceOf(ConstraintViolationException.class);
+
         verify(trainingRepository, never()).save(any());
     }
 
@@ -100,15 +110,25 @@ class TrainingServiceTest {
     void search_delegatesToRepositoryWithSpecification() {
         var from = new Date(1000);
         var to = new Date(2000);
-        var training = Training.builder().trainee(Util.trainee("trainee.username")).trainer(Util.trainer(
-                "trainer.username")).name("Training").type(Util.trainingType("Cardio")).datetime(from).durationMinutes(
-                        30).build();
+        var training = Training
+                .builder()
+                .trainee(Util.trainee("trainee.username"))
+                .trainer(Util.trainer("trainer.username"))
+                .name("Training")
+                .type(Util.trainingType("Cardio"))
+                .datetime(from)
+                .durationMinutes(30)
+                .build();
 
         when(trainingRepository.findAll(any(Specification.class))).thenReturn(List.of(training));
 
-        var result = trainingService.search(SearchTrainingRequest.builder().fromDateInclusive(
-                from).toDateInclusive(to).traineeUsername("trainee.username").trainerUsername(
-                        "trainer.username").build());
+        var result = trainingService.search(SearchTrainingRequest
+                                                    .builder()
+                                                    .fromDateInclusive(from)
+                                                    .toDateInclusive(to)
+                                                    .traineeUsername("trainee.username")
+                                                    .trainerUsername("trainer.username")
+                                                    .build());
 
         assertThat(result).containsExactly(training);
         verify(trainingRepository).findAll(any(Specification.class));

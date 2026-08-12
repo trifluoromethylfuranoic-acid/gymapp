@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.epam.lenda.gymapp.TestConfig;
 import com.epam.lenda.gymapp.Util;
 import com.epam.lenda.gymapp.dto.request.CreateTrainerRequest;
 import com.epam.lenda.gymapp.dto.request.UpdateTrainerRequest;
@@ -56,8 +57,9 @@ class TrainerServiceTest {
     @Test
     void create_createsActiveTrainer() {
         var yoga = Util.trainingType("Yoga");
-        when(credentialsService.generateCredentials(any())).thenReturn(
-                new CredentialsService.Credentials("Alice.Apple", "password", "encoded-password"));
+        when(credentialsService.generateCredentials(any()))
+                .thenReturn(new CredentialsService.Credentials(
+                        "Alice.Apple", "password", "encoded-password"));
         when(trainingTypeRepository.findByNameIgnoreCase("Yoga")).thenReturn(Optional.of(yoga));
 
         trainerService.create(

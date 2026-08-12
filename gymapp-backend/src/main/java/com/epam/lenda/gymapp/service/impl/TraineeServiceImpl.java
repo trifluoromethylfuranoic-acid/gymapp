@@ -4,6 +4,7 @@ import com.epam.lenda.gymapp.dto.request.CreateTraineeRequest;
 import com.epam.lenda.gymapp.dto.request.UpdateTraineeRequest;
 import com.epam.lenda.gymapp.exception.DuplicateUsernameException;
 import com.epam.lenda.gymapp.exception.ResourceNotFoundException;
+import com.epam.lenda.gymapp.model.Role;
 import com.epam.lenda.gymapp.model.Trainee;
 import com.epam.lenda.gymapp.model.Trainer;
 import com.epam.lenda.gymapp.model.TrainingAssignment;
@@ -32,23 +33,25 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, CreateTrain
     private final TrainingAssignmentRepository trainingAssignmentRepository;
     private final CredentialsService credentialsService;
     private final TrainingRepository trainingRepository;
+    private final RefreshTokenRepository refreshTokenRepository;
 
     public TraineeServiceImpl(TraineeRepository traineeRepository, TrainerRepository trainerRepository,
                               TrainingAssignmentRepository trainingAssignmentRepository,
                               CredentialsService credentialsService, TrainingRepository trainingRepository,
-                              MeterRegistry meterRegistry) {
+                              MeterRegistry meterRegistry, RefreshTokenRepository refreshTokenRepository) {
         super(meterRegistry);
         this.traineeRepository = traineeRepository;
         this.trainerRepository = trainerRepository;
         this.trainingAssignmentRepository = trainingAssignmentRepository;
         this.credentialsService = credentialsService;
         this.trainingRepository = trainingRepository;
+        this.refreshTokenRepository = refreshTokenRepository;
     }
 
     @Override
     @Transactional
     public @Nonnull Pair<Trainee, String> create(@Nonnull CreateTraineeRequest request) {
-        final var pair = createUser(request);
+        final var pair = createUser(request, Role.ROLE_TRAINEE);
         final var user = pair.first();
         final var password = pair.second();
 
@@ -82,6 +85,7 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, CreateTrain
         final var trainee = findByUsername(username);
         trainingRepository.deleteByTraineeId(trainee.getId());
         trainingAssignmentRepository.deleteByTraineeId(trainee.getId());
+        refreshTokenRepository.deleteByUsername(trainee.getUser().getUsername());
         traineeRepository.delete(trainee);
     }
 
@@ -137,8 +141,9 @@ public class TraineeServiceImpl extends BaseUserServiceImpl<Trainee, CreateTrain
 
     private void addTrainingAssignments(@Nonnull Trainee trainee, @Nonnull Collection<UUID> existingTrainerIds,
                                         @Nonnull Collection<Trainer> newTrainers) {
-        final var toAddTrainers = newTrainers.stream().filter(trainer -> !existingTrainerIds.contains(
-                trainer.getId())).toList();
+        final var toAddTrainers = newTrainers
+                .stream()
+                .filter(trainer -> !existingTrainerIds.contains(trainer.getId())).toList();
 
 
         if (!toAddTrainers.isEmpty()) {

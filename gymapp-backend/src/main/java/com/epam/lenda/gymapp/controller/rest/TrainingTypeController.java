@@ -21,7 +21,8 @@ public class TrainingTypeController {
     private final TrainingTypeService trainingTypeService;
 
     @Operation(summary = "Get available training types")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "Success"),
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Success"),
     })
     @GetMapping("")
     @Nonnull

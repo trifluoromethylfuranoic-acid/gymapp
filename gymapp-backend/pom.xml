@@ -55,6 +55,10 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -141,9 +145,6 @@
                 <version>2.43.0</version>
                 <configuration>
                     <java>
-                        <eclipse>
-                            <file>code-style-eclipse.xml</file>
-                        </eclipse>
                         <removeUnusedImports/>
                         <importOrder/>
                         <formatAnnotations/>

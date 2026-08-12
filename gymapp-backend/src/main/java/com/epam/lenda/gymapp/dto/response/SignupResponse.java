@@ -8,8 +8,10 @@ import lombok.extern.jackson.Jacksonized;
 @Builder
 @Jacksonized
 public record SignupResponse(
-                             @Nonnull String username,
-                             @Nonnull String password
+        @Nonnull String username,
+        @Nonnull String password,
+        @Nonnull String accessToken,
+        @Nonnull String refreshToken
 ) {
     @Override
     public @Nonnull String toString() {

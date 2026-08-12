@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.epam.lenda.gymapp.config.SecurityConfig;
+import com.epam.lenda.gymapp.TestSecurityConfig;
 import com.epam.lenda.gymapp.model.TrainingType;
 import com.epam.lenda.gymapp.service.TrainingTypeService;
 import java.util.List;
@@ -14,11 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(TrainingTypeController.class)
-@Import(SecurityConfig.class)
+@Import({TestSecurityConfig.class})
+@ActiveProfiles("test")
 class TrainingTypeControllerTest {
     @Autowired
     private MockMvc mockMvc;
@@ -32,7 +34,10 @@ class TrainingTypeControllerTest {
         final var yoga = new TrainingType("Yoga");
         when(trainingTypeService.findAll()).thenReturn(List.of(fitness, yoga));
 
-        mockMvc.perform(get("/api/v1/training-types")).andExpect(status().isOk()).andExpect(jsonPath("$", hasSize(
-                2))).andExpect(jsonPath("$[0]").value("Fitness")).andExpect(jsonPath("$[1]").value("Yoga"));
+        mockMvc.perform(get("/api/v1/training-types"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$", hasSize(2)))
+               .andExpect(jsonPath("$[0]").value("Fitness"))
+               .andExpect(jsonPath("$[1]").value("Yoga"));
     }
 }
