@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: main-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${application.security.accessToken.issuer}
+
+server:
+  port: 8082
+
+application:
+  security:
+    defaultPasswordLength: 10
+    userBlock:
+      maxLoginAttempts: 3
+      durationSeconds: 300
+    accessToken:
+      issuer: http://main-service:8082
+      lifetimeSeconds: 600
+      publicKey: ${JWT_PUBLIC_KEY_PATH:file:/etc/keys/public.pem}
+      privateKey: ${JWT_PRIVATE_KEY_PATH:/etc/keys/private.pem}
+      keyId: ${JWT_KEY_ID:key-1}
+    refreshToken:
+      lifetimeSeconds: 864000
+      lengthBytes: 32
+    interserviceToken:
+      lifetimeSeconds: 1800
+    cors:
+      allowedOrigins: []
+  report:
+    maxRetries: 4
+    backoffMillis: 500
+    multiplier: 2
+resilience4j:
+  circuitbreaker:
+    instances:
+      report-service:
+        slidingWindowSize: 5
+        minimumNumberOfCalls: 5
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        automaticTransitionFromOpenToHalfOpenEnabled: false
+
+logging:
+  pattern:
+    level: "%5p [%X{transactionId}]"
+
+management:
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka-server:8761/eureka
+  instance:
+    preferIpAddress: true
