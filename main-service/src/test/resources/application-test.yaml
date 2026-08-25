@@ -1,0 +1,42 @@
+logging:
+  threshold:
+    console: trace
+  level:
+    root: info
+    org.springframework: trace
+    com.epam.lenda: trace
+
+spring:
+  datasource:
+    url: jdbc:h2:mem:gymapp-dev
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+application:
+  security:
+    accessToken:
+      issuer: http://main-service:8082
+      publicKey: classpath:keys/test-public.pem
+      privateKey: classpath:keys/test-private.pem
+      keyId: test-key-1
+      interserviceToken:
+        lifetimeSeconds: 1800
+    clients:
+      current:
+        secret: test-current-secret
+      secrets:
+        gatewayService: test-gateway-secret
+        mainService: test-main-secret
+        reportService: test-report-secret

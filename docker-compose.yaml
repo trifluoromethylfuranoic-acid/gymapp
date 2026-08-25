@@ -1,0 +1,31 @@
+services:
+  main-service:
+    image: lenda-gymapp/main-service:latest
+    pull_policy: never
+    ports:
+      - 8082:8082
+    env_file:
+      - ./main-service/.env
+    volumes:
+      - ./keys/:/etc/keys/:ro
+    environment:
+      APPLICATION_SECURITY_CLIENTS_SECRETS_GATEWAYSERVICE: ${APPLICATION_SECURITY_CLIENTS_SECRETS_GATEWAYSERVICE}
+      APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE: ${APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE}
+      APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE: ${APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE}
+      APPLICATION_SECURITY_CLIENTS_CURRENT_SECRET: ${APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE}
+
+  report-service:
+    image: lenda-gymapp/report-service:latest
+    pull_policy: never
+    ports:
+      - 8081:8081
+    depends_on:
+      - main-service
+    environment:
+      APPLICATION_SECURITY_CLIENTS_CURRENT_SECRET: ${APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE}
+
+  eureka-server:
+    image: lenda-gymapp/eureka-server:latest
+    pull_policy: never
+    ports:
+      - 8761:8761

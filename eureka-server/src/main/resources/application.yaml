@@ -1,0 +1,32 @@
+spring:
+  application:
+    name: eureka-server
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://main-service:8082
+
+server:
+  port: 8761
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+  health:
+    key:
+      enabled: db,diskspace
+  metrics:
+    tags:
+      application: ${spring.application.name}

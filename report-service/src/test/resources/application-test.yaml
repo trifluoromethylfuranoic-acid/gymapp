@@ -1,0 +1,5 @@
+application:
+  security:
+    clients:
+      current:
+        secret: test-current-secret
