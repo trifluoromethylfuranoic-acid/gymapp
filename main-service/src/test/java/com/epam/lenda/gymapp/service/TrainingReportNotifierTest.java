@@ -1,69 +1,56 @@
 package com.epam.lenda.gymapp.service;
 
-import static org.awaitility.Awaitility.await;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.times;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import com.epam.lenda.gymapp.client.ReportClient;
 import com.epam.lenda.gymapp.dto.event.TrainingActionEvent;
+import com.epam.lenda.gymapp.messaging.TrainingReportMessaging;
 import com.epam.lenda.gymapp.service.impl.TrainingReportNotifier;
-import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
-import java.time.Duration;
-import org.junit.jupiter.api.BeforeEach;
+import jakarta.jms.JMSException;
+import jakarta.jms.Session;
+import jakarta.jms.TextMessage;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.jms.core.JmsTemplate;
+import org.springframework.jms.core.MessageCreator;
+import tools.jackson.databind.ObjectMapper;
 
-@SpringBootTest(properties = {
-        "application.report.maxRetries=2",
-        "application.report.backoffMillis=50",
-        "application.report.multiplier=1"
-})
-@ActiveProfiles("test")
+@ExtendWith(MockitoExtension.class)
 class TrainingReportNotifierTest {
     private static final TrainingActionEvent EVENT = TrainingActionEvent
             .builder()
             .action(TrainingActionEvent.Action.CREATE)
             .build();
 
-    @Autowired
+    @Mock
+    private JmsTemplate jmsTemplate;
+
+    @Mock
+    private ObjectMapper objectMapper;
+
+    @InjectMocks
     private TrainingReportNotifier notifier;
 
-    @MockitoBean
-    private ReportClient reportClient;
-
-    @Autowired
-    private CircuitBreakerRegistry circuitBreakerRegistry;
-
-    @BeforeEach
-    void resetCircuitBreaker() {
-        circuitBreakerRegistry.circuitBreaker(TrainingReportNotifier.REPORT_SERVICE_CIRCUIT_BREAKER).reset();
-    }
-
     @Test
-    void retriesUntilSuccess() {
-        doThrow(new RuntimeException("fail-1"))
-                .doThrow(new RuntimeException("fail-2"))
-                .doNothing()
-                .when(reportClient).recordTraining(any());
+    void sendsTrainingEventAsJsonMessage() throws JMSException {
+        when(objectMapper.writeValueAsString(EVENT)).thenReturn("payload");
 
         notifier.notify(EVENT);
 
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(
-                () -> verify(reportClient, times(3)).recordTraining(any()));
-    }
+        final var creatorCaptor = ArgumentCaptor.forClass(MessageCreator.class);
+        verify(jmsTemplate).send(eq(TrainingReportMessaging.QUEUE), creatorCaptor.capture());
 
-    @Test
-    void givesUpAfterMaxAttemptsWithoutPropagatingFailure() {
-        doThrow(new RuntimeException("report-service down")).when(reportClient).recordTraining(any());
+        final var session = mock(Session.class);
+        final var message = mock(TextMessage.class);
+        when(session.createTextMessage("payload")).thenReturn(message);
 
-        notifier.notify(EVENT);
-
-        await().atMost(Duration.ofSeconds(10)).untilAsserted(
-                () -> verify(reportClient, times(3)).recordTraining(any()));
+        assertThat(creatorCaptor.getValue().createMessage(session)).isSameAs(message);
     }
 }

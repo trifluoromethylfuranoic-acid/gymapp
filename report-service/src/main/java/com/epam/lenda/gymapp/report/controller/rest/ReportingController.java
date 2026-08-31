@@ -2,17 +2,16 @@ package com.epam.lenda.gymapp.report.controller.rest;
 
 import com.epam.lenda.gymapp.common.security.UserPrincipal;
 import com.epam.lenda.gymapp.report.dto.TrainerResponse;
-import com.epam.lenda.gymapp.report.dto.TrainingAction;
 import com.epam.lenda.gymapp.report.mapper.TrainerMapper;
 import com.epam.lenda.gymapp.report.service.ReportingService;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequiredArgsConstructor
@@ -34,11 +33,4 @@ public class ReportingController {
         return trainerMapper.toDto(trainer, records);
     }
 
-    @PostMapping("/reports")
-    @PreAuthorize("@reportAuthorization.isMainService(#request)")
-    @ResponseStatus(HttpStatus.OK)
-    public void recordTraining(HttpServletRequest request,
-                               @RequestBody @Valid @NotNull TrainingAction trainingAction) {
-        reportingService.recordTraining(trainingAction);
-    }
 }
