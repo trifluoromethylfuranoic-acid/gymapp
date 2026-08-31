@@ -4,6 +4,9 @@ services:
     pull_policy: never
     ports:
       - 8082:8082
+    depends_on:
+      - eureka-server
+      - activemq
     env_file:
       - ./main-service/.env
     volumes:
@@ -13,6 +16,9 @@ services:
       APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE: ${APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE}
       APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE: ${APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE}
       APPLICATION_SECURITY_CLIENTS_CURRENT_SECRET: ${APPLICATION_SECURITY_CLIENTS_SECRETS_MAINSERVICE}
+      ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      ACTIVEMQ_CONNECTION_USER: ${ACTIVEMQ_CONNECTION_USER:?Set ACTIVEMQ_CONNECTION_USER in .env}
+      ACTIVEMQ_CONNECTION_PASSWORD: ${ACTIVEMQ_CONNECTION_PASSWORD:?Set ACTIVEMQ_CONNECTION_PASSWORD in .env}
 
   report-service:
     image: lenda-gymapp/report-service:latest
@@ -21,11 +27,35 @@ services:
       - 8081:8081
     depends_on:
       - main-service
+      - eureka-server
+      - activemq
     environment:
       APPLICATION_SECURITY_CLIENTS_CURRENT_SECRET: ${APPLICATION_SECURITY_CLIENTS_SECRETS_REPORTSERVICE}
+      ACTIVEMQ_BROKER_URL: tcp://activemq:61616
+      ACTIVEMQ_CONNECTION_USER: ${ACTIVEMQ_CONNECTION_USER:?Set ACTIVEMQ_CONNECTION_USER in .env}
+      ACTIVEMQ_CONNECTION_PASSWORD: ${ACTIVEMQ_CONNECTION_PASSWORD:?Set ACTIVEMQ_CONNECTION_PASSWORD in .env}
 
   eureka-server:
     image: lenda-gymapp/eureka-server:latest
     pull_policy: never
     ports:
       - 8761:8761
+
+  activemq:
+    image: apache/activemq:6.3.0
+    ports:
+      - 61616:61616
+      - "127.0.0.1:8161:8161"
+    environment:
+      ACTIVEMQ_CONNECTION_USER: ${ACTIVEMQ_CONNECTION_USER:?Set ACTIVEMQ_CONNECTION_USER in .env}
+      ACTIVEMQ_CONNECTION_PASSWORD: ${ACTIVEMQ_CONNECTION_PASSWORD:?Set ACTIVEMQ_CONNECTION_PASSWORD in .env}
+      ACTIVEMQ_WEB_USER: ${ACTIVEMQ_WEB_USER:?Set ACTIVEMQ_WEB_USER in .env}
+      ACTIVEMQ_WEB_PASSWORD: ${ACTIVEMQ_WEB_PASSWORD:?Set ACTIVEMQ_WEB_PASSWORD in .env}
+    volumes:
+      - activemq-data:/opt/apache-activemq/data
+      - ./activemq/jetty-security.xml:/opt/apache-activemq/conf/jetty/jetty-security.xml:ro
+
+
+volumes:
+  activemq-data:
+    name: gymapp-activemq-data

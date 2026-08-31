@@ -1,3 +1,8 @@
+spring:
+  jms:
+    listener:
+      auto-startup: false
+
 application:
   security:
     clients:

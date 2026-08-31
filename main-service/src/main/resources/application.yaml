@@ -1,6 +1,10 @@
 spring:
   application:
     name: main-service
+  activemq:
+    broker-url: ${ACTIVEMQ_BROKER_URL:tcp://localhost:61616}
+    user: ${ACTIVEMQ_CONNECTION_USER:system}
+    password: ${ACTIVEMQ_CONNECTION_PASSWORD:manager}
   security:
     oauth2:
       resourceserver:
@@ -29,20 +33,6 @@ application:
       lifetimeSeconds: 1800
     cors:
       allowedOrigins: []
-  report:
-    maxRetries: 4
-    backoffMillis: 500
-    multiplier: 2
-resilience4j:
-  circuitbreaker:
-    instances:
-      report-service:
-        slidingWindowSize: 5
-        minimumNumberOfCalls: 5
-        failureRateThreshold: 50
-        waitDurationInOpenState: 30s
-        automaticTransitionFromOpenToHalfOpenEnabled: false
-
 logging:
   pattern:
     level: "%5p [%X{transactionId}]"
