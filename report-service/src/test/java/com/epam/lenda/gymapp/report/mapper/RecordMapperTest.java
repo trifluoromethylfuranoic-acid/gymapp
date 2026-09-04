@@ -3,10 +3,11 @@ package com.epam.lenda.gymapp.report.mapper;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.epam.lenda.gymapp.report.mapper.impl.RecordMapperImpl;
-import com.epam.lenda.gymapp.report.model.TrainingRecord;
+import com.epam.lenda.gymapp.report.model.MonthRecord;
+import com.epam.lenda.gymapp.report.model.YearRecord;
 import java.time.Month;
 import java.util.List;
-import org.jspecify.annotations.NonNull;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,16 +24,19 @@ public class RecordMapperTest {
 
     @Test
     void toMap_success() {
-        final var records = getTrainingRecords();
+        final var records = getYearRecords();
 
         final var map = recordMapper.toMap(records);
 
-        records.forEach(record -> {
-            final var mapForYear = map.get(record.getId().getYear());
-            assertNotNull(mapForYear);
-            final var durationForMonthHours = mapForYear.get(record.getId().getMonth());
-            assertEquals(record.getTrainingDurationMinutes() / 60, durationForMonthHours);
-        });
+        assertEquals(Map.of(
+                2024, Map.of(Month.JANUARY, 10L),
+                2025, Map.of(
+                        Month.JANUARY, 8L,
+                        Month.FEBRUARY, 1L,
+                        Month.MARCH, 3L,
+                        Month.NOVEMBER, 13L,
+                        Month.DECEMBER, 15L),
+                2026, Map.of(Month.APRIL, 11L)), map);
 
         var previousYear = Integer.MIN_VALUE;
         for (var year : map.keySet()) {
@@ -53,25 +57,26 @@ public class RecordMapperTest {
     void toMap_removesZeroRows() {
         final var username = "username";
         final var records = List.of(
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.JANUARY), 100L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.FEBRUARY), 0L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2024, Month.MARCH), 0L));
+                new YearRecord(2025, List.of(
+                        new MonthRecord(Month.JANUARY, 100L),
+                        new MonthRecord(Month.FEBRUARY, 0L))),
+                new YearRecord(2024, List.of(new MonthRecord(Month.MARCH, 0L))));
 
         final var map = recordMapper.toMap(records);
 
         assertEquals(java.util.Map.of(2025, java.util.Map.of(Month.JANUARY, 1L)), map);
     }
 
-    private static @NonNull List<TrainingRecord> getTrainingRecords() {
-        final var username = "username";
+    private static List<YearRecord> getYearRecords() {
         return List.of(
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.JANUARY), 500L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2024, Month.JANUARY), 600L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2026, Month.APRIL), 700L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.NOVEMBER), 800L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.DECEMBER), 900L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.FEBRUARY), 100L),
-                new TrainingRecord(new TrainingRecord.Id(username, 2025, Month.MARCH), 200L)
+                new YearRecord(2025, List.of(
+                        new MonthRecord(Month.JANUARY, 500L),
+                        new MonthRecord(Month.NOVEMBER, 800L),
+                        new MonthRecord(Month.DECEMBER, 900L),
+                        new MonthRecord(Month.FEBRUARY, 100L),
+                        new MonthRecord(Month.MARCH, 200L))),
+                new YearRecord(2024, List.of(new MonthRecord(Month.JANUARY, 600L))),
+                new YearRecord(2026, List.of(new MonthRecord(Month.APRIL, 700L)))
         );
     }
 }

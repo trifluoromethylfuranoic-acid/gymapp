@@ -5,7 +5,7 @@ import com.epam.lenda.gymapp.report.dto.TrainerResponse;
 import com.epam.lenda.gymapp.report.mapper.RecordMapper;
 import com.epam.lenda.gymapp.report.mapper.TrainerMapper;
 import com.epam.lenda.gymapp.report.model.Trainer;
-import com.epam.lenda.gymapp.report.model.TrainingRecord;
+import com.epam.lenda.gymapp.report.model.YearRecord;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
@@ -28,7 +28,7 @@ public class TrainerMapperImpl implements TrainerMapper {
     }
 
     @Override
-    public @NonNull TrainerResponse toDto(@NonNull Trainer trainer, @NonNull List<@NonNull TrainingRecord> records) {
+    public @NonNull TrainerResponse toDto(@NonNull Trainer trainer, @NonNull List<@NonNull YearRecord> records) {
         final var hoursMap = recordMapper.toMap(records);
         return TrainerResponse
                 .builder()

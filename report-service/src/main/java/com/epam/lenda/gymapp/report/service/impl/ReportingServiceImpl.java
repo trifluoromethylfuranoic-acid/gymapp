@@ -5,80 +5,92 @@ import com.epam.lenda.gymapp.report.dto.TrainerRequest;
 import com.epam.lenda.gymapp.report.dto.TrainingAction;
 import com.epam.lenda.gymapp.report.exception.ResourceNotFoundException;
 import com.epam.lenda.gymapp.report.mapper.TrainerMapper;
+import com.epam.lenda.gymapp.report.model.MonthRecord;
 import com.epam.lenda.gymapp.report.model.Trainer;
-import com.epam.lenda.gymapp.report.model.TrainingRecord;
+import com.epam.lenda.gymapp.report.model.YearRecord;
 import com.epam.lenda.gymapp.report.repository.TrainerRepository;
-import com.epam.lenda.gymapp.report.repository.TrainingRecordRepository;
 import com.epam.lenda.gymapp.report.service.ReportingService;
 import jakarta.validation.constraints.NotNull;
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class ReportingServiceImpl implements ReportingService {
     private final TrainerRepository trainerRepository;
-    private final TrainingRecordRepository trainingRecordRepository;
     private final TrainerMapper trainerMapper;
     private final Clock clock;
 
-    @Transactional
     @Override
     public void recordTraining(@NotNull TrainingAction trainingAction) {
-        updateOrCreateTrainer(trainingAction.trainer());
+        final var trainer = trainerRepository
+                .findById(trainingAction.trainer().username())
+                .map(trainerEntity -> updateTrainerInfo(trainerEntity, trainingAction.trainer()))
+                .orElseGet(() -> trainerMapper.toEntity(trainingAction.trainer()));
 
-        final var recordId = TrainingRecord.Id
-                .builder()
-                .trainer(trainingAction.trainer().username())
-                .year(trainingAction.datetime().getYear())
-                .month(trainingAction.datetime().getMonth())
-                .build();
+        if (trainer.getYearRecords() == null) {
+            trainer.setYearRecords(new ArrayList<>());
+        }
 
-        final var record = trainingRecordRepository.findById(recordId).orElseGet(
-                () -> new TrainingRecord(recordId, 0L));
+        final var year = trainingAction.datetime().getYear();
+        final var yearRecord = trainer.getYearRecords().stream()
+                .filter(existingRecord -> Integer.valueOf(year).equals(existingRecord.getYear()))
+                .findFirst()
+                .orElseGet(() -> {
+                    final var newYearRecord = new YearRecord(year, new ArrayList<>());
+                    trainer.getYearRecords().add(newYearRecord);
+                    return newYearRecord;
+                });
+
+        if (yearRecord.getMonthRecords() == null) {
+            yearRecord.setMonthRecords(new ArrayList<>());
+        }
+
+        final var month = trainingAction.datetime().getMonth();
+        final var monthRecord = yearRecord.getMonthRecords().stream()
+                .filter(existingRecord -> month.equals(existingRecord.getMonth()))
+                .findFirst()
+                .orElseGet(() -> {
+                    final var newMonthRecord = new MonthRecord(month, 0L);
+                    yearRecord.getMonthRecords().add(newMonthRecord);
+                    return newMonthRecord;
+                });
 
         if (trainingAction.action() == Action.CREATE) {
-            final var newDurationMinutes = record.getTrainingDurationMinutes() + trainingAction.durationMinutes();
-            record.setTrainingDurationMinutes(newDurationMinutes);
+            final var newDurationMinutes = monthRecord.getTrainingDurationMinutes() + trainingAction.durationMinutes();
+            monthRecord.setTrainingDurationMinutes(newDurationMinutes);
         } else if (trainingAction.datetime().toInstant().isAfter(clock.instant())) {
             final var newDurationMinutes = Math.max(0L,
-                                                    record.getTrainingDurationMinutes() - trainingAction.durationMinutes());
-            record.setTrainingDurationMinutes(newDurationMinutes);
+                                                    monthRecord.getTrainingDurationMinutes()
+                                                            - trainingAction.durationMinutes());
+            monthRecord.setTrainingDurationMinutes(newDurationMinutes);
         }
-        trainingRecordRepository.save(record);
-
+        trainerRepository.save(trainer);
     }
 
-    @Transactional
     @Override
     public @NonNull Trainer getTrainer(@NonNull String username) {
         return trainerRepository.findById(username)
                                 .orElseThrow(() -> new ResourceNotFoundException("trainer", username));
     }
 
-    @Transactional
     @Override
-    public @NonNull List<@NonNull TrainingRecord> getRecordsForTrainer(@NonNull String username) {
-        return trainingRecordRepository.findByTrainerUsername(username);
+    public @NonNull List<@NonNull YearRecord> getRecordsForTrainer(@NonNull String username) {
+        return trainerRepository.findById(username)
+                .map(Trainer::getYearRecords)
+                .map(records -> records == null ? List.<YearRecord>of() : records)
+                .orElseGet(List::of);
     }
 
-    @Transactional
     @Override
-    public @NonNull List<@NonNull TrainingRecord> getRecordsForTrainerByYear(@NonNull String username, int year) {
-        return trainingRecordRepository.findByTrainerUsernameAndYear(username, year);
-    }
-
-    private void updateOrCreateTrainer(@NonNull TrainerRequest trainerRequest) {
-        final var trainer = trainerRepository
-                .findById(trainerRequest.username())
-                .map(trainerEntity -> updateTrainerInfo(trainerEntity, trainerRequest))
-                .orElseGet(() -> trainerMapper.toEntity(trainerRequest));
-
-        trainerRepository.save(trainer);
+    public @NonNull List<@NonNull YearRecord> getRecordsForTrainerByYear(@NonNull String username, int year) {
+        return getRecordsForTrainer(username).stream()
+                .filter(record -> Integer.valueOf(year).equals(record.getYear()))
+                .toList();
     }
 
     private @NonNull Trainer updateTrainerInfo(@NonNull Trainer trainer, @NonNull TrainerRequest request) {
