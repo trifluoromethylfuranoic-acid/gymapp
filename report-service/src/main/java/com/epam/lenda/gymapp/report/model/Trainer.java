@@ -1,30 +1,27 @@
 package com.epam.lenda.gymapp.report.model;
 
-import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.*;
-import org.jspecify.annotations.Nullable;
-import org.springframework.data.domain.Persistable;
+import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.mapping.Document;
 
 @ToString
 @NoArgsConstructor
 @Getter
 @Setter
-@Entity
-public class Trainer implements Persistable<String>, Cloneable {
+@Document(collection = "trainers")
+public class Trainer implements Cloneable {
     @Id
     private String username;
 
-    @Column(nullable = false)
     private String firstName;
 
-    @Column(nullable = false)
     private String lastName;
 
-    @Column(nullable = false)
     private Boolean isActive;
 
-    @Transient
-    private boolean isNew = true;
+    private List<YearRecord> yearRecords = new ArrayList<>();
 
     @Builder
     public Trainer(String username, String firstName, String lastName, Boolean isActive) {
@@ -32,22 +29,7 @@ public class Trainer implements Persistable<String>, Cloneable {
         this.firstName = firstName;
         this.lastName = lastName;
         this.isActive = isActive;
-    }
-
-    @Override
-    public @Nullable String getId() {
-        return username;
-    }
-
-    @Override
-    public boolean isNew() {
-        return isNew;
-    }
-
-    @PostLoad
-    @PrePersist
-    public void markNotNew() {
-        isNew = false;
+        this.yearRecords = new ArrayList<>();
     }
 
     @Override

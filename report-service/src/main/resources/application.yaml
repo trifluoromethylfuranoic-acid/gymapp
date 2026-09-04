@@ -5,6 +5,9 @@ spring:
     broker-url: ${ACTIVEMQ_BROKER_URL:tcp://localhost:61616}
     user: ${ACTIVEMQ_CONNECTION_USER:system}
     password: ${ACTIVEMQ_CONNECTION_PASSWORD:manager}
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/gymapp-report}
   security:
     oauth2:
       resourceserver:
