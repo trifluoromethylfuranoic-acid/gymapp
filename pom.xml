@@ -25,6 +25,7 @@
 		<module>eureka-server</module>
 		<module>report-service</module>
 		<module>common</module>
+		<module>integration-tests</module>
 	</modules>
 
 	<properties>
