@@ -24,7 +24,6 @@ logging:
     console: trace
   level:
     root: info
-    org.springframework: trace
     com.epam.lenda: trace
 
 management:
